@@ -1,11 +1,42 @@
-﻿using UnityEngine;
+﻿using System;
+using UnityEngine;
 
 public class TileSelector : MonoBehaviour
 {
     private bool _isSettingStartTile = true;
 
-    public Tile StartTile { get; private set; }
-    public Tile EndTile { get; private set; }
+    private Tile _startTile, _endTile;
+
+    public event EventHandler StartTileSelected;
+    public event EventHandler EndTileSelected;
+
+    public Tile StartTile 
+    {
+        get => _startTile;
+        private set
+        {
+            _startTile = value;
+            
+            if (value != null)
+            {
+                StartTileSelected?.Invoke(this, null);
+            }
+        }
+    }
+
+    public Tile EndTile
+    {
+        get => _endTile;
+        private set
+        {
+            _endTile = value;
+           
+            if (value != null)
+            {
+                EndTileSelected?.Invoke(this, null);
+            }
+        }
+    }
 
     public void Reset()
     {
@@ -22,9 +53,8 @@ public class TileSelector : MonoBehaviour
             if(Physics.Raycast(ray, out hit, Mathf.Infinity))
             {
                 Tile tile = hit.collider.GetComponent<Tile>();
-                if(tile != null && !tile.IsOccupied && tile != StartTile && tile != EndTile)
+                if(tile != null && !tile.IsOccupied && tile != _startTile && tile != _endTile)
                 {
-                    tile.SetColor(_isSettingStartTile ? Color.blue : Color.red);
                     if (_isSettingStartTile)
                     {
                         StartTile?.ResetColor();
@@ -35,6 +65,8 @@ public class TileSelector : MonoBehaviour
                         EndTile?.ResetColor();
                         EndTile = tile;
                     }
+
+                    tile.SetColor(_isSettingStartTile ? Color.blue : Color.red);
                     _isSettingStartTile = !_isSettingStartTile;
                 }
             }
