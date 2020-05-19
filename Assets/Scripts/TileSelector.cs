@@ -19,6 +19,7 @@ public class TileSelector : MonoBehaviour
             
             if (value != null)
             {
+                value.SetColor(Color.blue);
                 StartTileSelected?.Invoke(this, null);
             }
         }
@@ -33,6 +34,7 @@ public class TileSelector : MonoBehaviour
            
             if (value != null)
             {
+                value.SetColor(Color.red);
                 EndTileSelected?.Invoke(this, null);
             }
         }
@@ -53,7 +55,7 @@ public class TileSelector : MonoBehaviour
             if(Physics.Raycast(ray, out hit, Mathf.Infinity))
             {
                 Tile tile = hit.collider.GetComponent<Tile>();
-                if(tile != null && !tile.IsOccupied && tile != _startTile && tile != _endTile)
+                if(tile != null && !tile.Node.IsOccupied && tile != _startTile && tile != _endTile)
                 {
                     if (_isSettingStartTile)
                     {
@@ -66,7 +68,6 @@ public class TileSelector : MonoBehaviour
                         EndTile = tile;
                     }
 
-                    tile.SetColor(_isSettingStartTile ? Color.blue : Color.red);
                     _isSettingStartTile = !_isSettingStartTile;
                 }
             }

@@ -11,6 +11,8 @@ public class TileMap : MonoBehaviour
     [SerializeField]
     private Tile _tilePrefab = null;
     [SerializeField]
+    private Road _roadPrefab = null;
+    [SerializeField]
     private GameObject _obstaclePrefab = null;
 
     [Header("Map Settings")]
@@ -20,10 +22,6 @@ public class TileMap : MonoBehaviour
     private int _sizeZ = 10;
     [SerializeField]
     private int _numObstacles = 4;
-
-    [Header("Pathfinding")]
-    [SerializeField]
-    private bool _animateSearch = false;
 
     [Header("Other")]
     [SerializeField]
@@ -36,7 +34,7 @@ public class TileMap : MonoBehaviour
     private List<Tile> _emptyTiles = new List<Tile>();
     private List<GameObject> _obstacles = new List<GameObject>();
 
-    private List<Tile> _prevPath;
+    private Dictionary<IPathfindingNode, Tile> _nodeToTile = new Dictionary<IPathfindingNode, Tile>();
 
     public Tile GetTile(int x, int z)
     {
@@ -47,11 +45,16 @@ public class TileMap : MonoBehaviour
         return null;
     }
 
+    public void RandomizeStartEnd()
+    {
+        Debug.LogError("Not implemented");
+        //_tileSelector.StartTile = _emptyTiles[Random.Range(0, _emptyTiles.Count)];
+    }
+
     public void GenerateMap()
     {
         //reset coroutines to make sure a path is not being search for when we re-generate a map
         StopAllCoroutines();
-        _prevPath?.Clear();
         _tileSelector.Reset();
 
         for (int i = 0; i < _allTiles.Count; i++)
@@ -67,6 +70,7 @@ public class TileMap : MonoBehaviour
         _obstacles.Clear();
 
         _emptyTiles.Clear();
+        _nodeToTile.Clear();
 
         _tiles = new Tile[_sizeX, _sizeZ];
         _tileIntMap = new int[_sizeX, _sizeZ];
@@ -84,7 +88,6 @@ public class TileMap : MonoBehaviour
                 _tiles[x, z] = tile;
                 tile.x = x;
                 tile.z = z;
-                tile.IsOccupied = false;
                 _tileIntMap[x, z] = 0;
 
                 _allTiles.Add(tile);
@@ -100,13 +103,20 @@ public class TileMap : MonoBehaviour
         //TODO: optimize and move to the initial loop
         for (int i = 0; i < _allTiles.Count; i++)
         {
-            _allTiles[i].neighbors = GetNeighbors(_allTiles[i]);
+            _allTiles[i].Neighbors = GetNeighbors(_allTiles[i]);
+            //for (int j = 0; j < _allTiles[i].Neighbors.Count; j++)
+            //{
+            //    Road road = Instantiate(_roadPrefab, transform);
+            //    road.Tile1 = _allTiles[i];
+            //    road.Tile2 = _allTiles[i].Neighbors[j];
+            //}
+            _nodeToTile.Add(_allTiles[i].Node, _allTiles[i]);
         }
     }
 
     public void FindPath()
     {
-        ResetPathHighlight();
+        ResetHighlights();
 
         if (_tileSelector.StartTile != null && _tileSelector.EndTile != null)
         {
@@ -115,15 +125,14 @@ public class TileMap : MonoBehaviour
         }
     }
 
-    private void ResetPathHighlight()
+    private void ResetHighlights()
     {
-        if (_prevPath != null)
+        for (int i = 0; i < _allTiles.Count; i++)
         {
-            for (int i = 0; i < _prevPath.Count; i++)
-            {
-                _prevPath[i].ResetColor();
-            }
-            _prevPath.Clear();
+            if (_allTiles[i] == _tileSelector.StartTile || _allTiles[i] == _tileSelector.EndTile)
+                continue;
+
+            _allTiles[i].ResetColor();
         }
     }
 
@@ -137,18 +146,29 @@ public class TileMap : MonoBehaviour
             _allTiles[i].Distance = int.MaxValue;
         }
 
-        IPathfinder algo = new DepthFirst();
-        IEnumerator algoCoroutine = algo.FindPath(start, end, _animateSearch);
+        IPathfinder algo = PathfindersFactory.GetPathfinderForType(Settings.Pathfinder);
+        IEnumerator algoCoroutine = algo.FindPath(
+            start, 
+            end, 
+            _allTiles.Where(x => !x.IsOccupied).ToArray(), 
+            Settings.AnimateSearch, 
+            (node) => 
+            { 
+                _nodeToTile[node].SetColor(Color.green);
+            },
+            (node) =>
+            {
+                _nodeToTile[node].SetColor(Color.gray);
+            }
+        );
         yield return algoCoroutine;
         List<Tile> path = algoCoroutine.Current as List<Tile>;
 
-        _prevPath = path;
-
-        if (path != null)
+        if (path != null && path.Count > 0)
         {
             for (int i = 0; i < path.Count; i++)
             {
-                path[i].SetColor(Color.white);
+                _nodeToTile[path[i].Node].SetColor(Color.white);
                 yield return new WaitForSeconds(0.1f);
             }
         }
@@ -188,7 +208,7 @@ public class TileMap : MonoBehaviour
                     continue;
                 }
 
-                if (neighbor.IsOccupied)
+                if (neighbor.Node.IsOccupied)
                 {
                     //has an obstacle -> skip
                     continue;
@@ -272,24 +292,11 @@ public class TileMap : MonoBehaviour
             _obstacles.Add(obstacle);
 
             Tile tile = _tiles[tileX, tileZ];
-            tile.IsOccupied = true;
+            tile.Node.IsOccupied = true;
             _tileIntMap[tileX, tileZ] = 1;
             _emptyTiles.Remove(tile);
         }
     }
-
-    //private void Awake()
-    //{
-    //    var type = typeof(IPathfinder);
-    //    var types = AppDomain.CurrentDomain.GetAssemblies()
-    //        .SelectMany(s => s.GetTypes())
-    //        .Where(p => type.IsAssignableFrom(p));
-
-    //    foreach (var item in types)
-    //    {
-    //        Debug.Log(item);
-    //    }
-    //}
 
     private void Start()
     {
@@ -301,7 +308,9 @@ public class TileMap : MonoBehaviour
 
     private void OnStartTileSelected(object sender, EventArgs e)
     {
-        ResetPathHighlight();
+        //stop pathfinding
+        StopAllCoroutines();
+        ResetHighlights();
 
         //for (int x = 0; x < _sizeX; x++)
         //{
@@ -317,7 +326,9 @@ public class TileMap : MonoBehaviour
 
     private void OnEndTileSelected(object sender, EventArgs e)
     {
-        ResetPathHighlight();
+        //stop pathfinding
+        StopAllCoroutines();
+        ResetHighlights();
     }
 
     private int DistanceFromTo(Tile from, Tile to)

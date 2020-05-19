@@ -10,41 +10,47 @@ public class Tile : MonoBehaviour
     private Text _label = null;
 
     public int x, z;
-    public int pathfindingWeight;
-    public List<Tile> path;
-    public List<Tile> neighbors;
+    //public int pathfindingWeight;
+    //public List<Tile> path;
+
+    public IPathfindingNode Node { get; set; }
+
+    public IList<Tile> Path { get; set; }
+    public IList<Tile> Neighbors { get; set; }
+    public bool IsOccupied { get; set; }
+    public int Distance { get; set; }
 
     private Color _originalColor;
-    private bool _isOccupied;
-    private int _distance;
+    //private bool _isOccupied;
+    //private int _distance;
 
-    public bool IsOccupied 
-    {
-        get => _isOccupied;
-        set 
-        {
-            _isOccupied = value;
+    //public bool IsOccupied 
+    //{
+    //    get => _isOccupied;
+    //    set 
+    //    {
+    //        _isOccupied = value;
 
-            if (value)
-            {
-                HideLabel();
-            }
-        } 
-    }
+    //        if (value)
+    //        {
+    //            HideLabel();
+    //        }
+    //    } 
+    //}
 
-    public int Distance
-    {
-        get => _distance;
-        set
-        {
-            _distance = value;
+    //public int Distance
+    //{
+    //    get => _distance;
+    //    set
+    //    {
+    //        _distance = value;
 
-            if (_distance != int.MaxValue)
-                ShowDistance();
-            else
-                HideLabel();
-        }
-    }
+    //        if (_distance != int.MaxValue)
+    //            ShowDistance();
+    //        else
+    //            HideLabel();
+    //    }
+    //}
 
     public void Initialize(Vector3 localPosition, Color color)
     {
@@ -53,7 +59,10 @@ public class Tile : MonoBehaviour
         _originalColor = color;
         HideLabel();
 
-        neighbors = new List<Tile>();
+        Neighbors = new List<Tile>();
+
+        Node = new PathfindingNode();
+        Node.IsOccupied = false;
     }
 
     public void SetColor(Color color)
@@ -72,17 +81,17 @@ public class Tile : MonoBehaviour
         _label.text = string.Format("({0}, {1})", x, z);
     }
 
-    public void ShowWeight()
-    {
-        _label.gameObject.SetActive(true);
-        _label.text = pathfindingWeight.ToString();
-    }
+    //public void ShowWeight()
+    //{
+    //    _label.gameObject.SetActive(true);
+    //    _label.text = pathfindingWeight.ToString();
+    //}
 
-    public void ShowDistance()
-    {
-        _label.gameObject.SetActive(true);
-        _label.text = _distance.ToString();
-    }
+    //public void ShowDistance()
+    //{
+    //    _label.gameObject.SetActive(true);
+    //    _label.text = _distance.ToString();
+    //}
 
     public void HideLabel()
     {
