@@ -6,15 +6,15 @@ using UnityEngine;
 
 public class AStar : IPathfinder
 {
-    public IEnumerator FindPath(Tile start, Tile end, IList<Tile> validNodes, bool animateSearch = false, Action<IPathfindingNode> processingAction = null, Action<IPathfindingNode> processedAction = null)
+    public IEnumerator FindPath(MapNode start, MapNode end, IList<MapNode> validNodes, bool animateSearch = false, Action<MapNode> processingAction = null, Action<MapNode> processedAction = null)
     {
-        PriorityQueue<Tile> unexplored = new PriorityQueue<Tile>();
+        PriorityQueue<MapNode> unexplored = new PriorityQueue<MapNode>();
 
         //initialization
         for (int i = 0; i < validNodes.Count; i++)
         {
-            Tile tile = validNodes[i];
-            tile.Path = new List<Tile>();
+            MapNode tile = validNodes[i];
+            tile.Path = new List<MapNode>();
             tile.Distance = int.MaxValue;
             unexplored.Enqueue(tile, tile.Distance);
         }
@@ -25,7 +25,7 @@ public class AStar : IPathfinder
         //processing
         while (unexplored.Count > 0)
         {
-            Tile current = unexplored.Dequeue();
+            MapNode current = unexplored.Dequeue();
 
             if (current == end)
             {
@@ -34,9 +34,9 @@ public class AStar : IPathfinder
                 yield break;
             }
 
-            for (int i = 0; i < current.Neighbors.Count; i++)
+            for (int i = 0; i < current.ConnectedNeighbors.Count; i++)
             {
-                Tile neighbor = current.Neighbors[i];
+                MapNode neighbor = current.ConnectedNeighbors[i];
 
                 int cameFromDistance = Mathf.Min(current.Distance, int.MaxValue - 1);
                 int nextPathDistance = 1;
@@ -47,14 +47,14 @@ public class AStar : IPathfinder
                 {
                     if (animateSearch && neighbor != start && neighbor != end)
                     {
-                        processingAction?.Invoke(neighbor.Node);
+                        processingAction?.Invoke(neighbor);
                         yield return new WaitForSeconds(0.05f);
                     }
 
                     unexplored.ChangePriority(neighbor, neighbor.Distance, distanceScoreWithHeuristic);
 
                     neighbor.Distance = distanceScoreWithHeuristic;
-                    neighbor.Path = new List<Tile>(current.Path);
+                    neighbor.Path = new List<MapNode>(current.Path);
                     if (current != start)
                         neighbor.Path.Add(current);
                 }
@@ -62,22 +62,22 @@ public class AStar : IPathfinder
 
             if (animateSearch && current != start && current != end)
             {
-                processedAction?.Invoke(current.Node);
+                processedAction?.Invoke(current);
             }
         }
 
         yield return null;
     }
 
-    private int GetHeuristicManhattan(Tile a, Tile b)
+    private int GetHeuristicManhattan(MapNode a, MapNode b)
     {
-        return Mathf.Abs(a.x - b.x) + Mathf.Abs(a.z - b.z);
+        return Mathf.Abs(a.XIndex - b.XIndex) + Mathf.Abs(a.ZIndex - b.ZIndex);
     }
 
-    private int GetHeuristicEuclidean(Tile a, Tile b)
+    private int GetHeuristicEuclidean(MapNode a, MapNode b)
     {
-        float xDist = a.x - b.x;
-        float zDist = a.z - b.z;
+        float xDist = a.XIndex - b.XIndex;
+        float zDist = a.ZIndex - b.ZIndex;
         //ceiling here might not be giving an accurate result!
         return Mathf.CeilToInt(Mathf.Sqrt(xDist * xDist + zDist * zDist));
     }

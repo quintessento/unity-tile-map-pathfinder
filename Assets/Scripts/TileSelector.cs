@@ -1,5 +1,6 @@
 ﻿using System;
 using UnityEngine;
+using UnityEngine.EventSystems;
 
 public class TileSelector : MonoBehaviour
 {
@@ -48,14 +49,18 @@ public class TileSelector : MonoBehaviour
 
     private void Update()
     {
-        if (Input.GetMouseButtonDown(0))
+        //make sure we aren't over UI to prevent accidental board placement while interacting with the UI
+        if (Input.GetMouseButtonDown(0) && !EventSystem.current.IsPointerOverGameObject())
         {
             Ray ray = CameraController.Main.ScreenPointToRay(Input.mousePosition);
             RaycastHit hit;
             if(Physics.Raycast(ray, out hit, Mathf.Infinity))
             {
+                //Vector3 hitPosition = transform.InverseTransformPoint(hit.point);
+                //Tile tile = GetComponent<TileMap>().GetTile(hitPosition.x, hitPosition.z);
                 Tile tile = hit.collider.GetComponent<Tile>();
-                if(tile != null && !tile.Node.IsOccupied && tile != _startTile && tile != _endTile)
+
+                if (tile != null && !tile.Node.HasObstacle && tile != _startTile && tile != _endTile)
                 {
                     if (_isSettingStartTile)
                     {

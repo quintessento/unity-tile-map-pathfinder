@@ -3,6 +3,10 @@ using System.Linq;
 
 namespace Custom.Collections.Generic
 {
+    /// <summary>
+    /// Simple implementation of the priority queue using a dictionary and Min sorting.
+    /// </summary>
+    /// <typeparam name="T">Type of data stored in the priority queue.</typeparam>
     public class PriorityQueue<T> where T : class
     {
         private Dictionary<int, HashSet<T>> _items = new Dictionary<int, HashSet<T>>();

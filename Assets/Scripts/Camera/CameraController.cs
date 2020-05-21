@@ -32,6 +32,14 @@ public class CameraController : MonoBehaviour
     {
         _camera = GetComponent<Camera>();
         Main = _camera;
+
+        _camera.orthographic = Settings.IsCameraOrthographic;
+        Settings.SettingsChanged += OnSettingsChanged;
+    }
+
+    private void OnSettingsChanged(object sender, System.EventArgs e)
+    {
+        _camera.orthographic = Settings.IsCameraOrthographic;
     }
 
     private void Update()
@@ -44,11 +52,11 @@ public class CameraController : MonoBehaviour
 
         if(Input.GetKey(_forwardKey) || Input.GetKey(_forwardKeyAlt))
         {
-            _camera.transform.position += _camera.transform.forward * Time.deltaTime * _movementSpeed;
+            _camera.transform.position += (_camera.orthographic ? _camera.transform.up : _camera.transform.forward) * Time.deltaTime * _movementSpeed;
         }
         else if(Input.GetKey(_backKey) || Input.GetKey(_backKeyAlt))
         {
-            _camera.transform.position -= _camera.transform.forward * Time.deltaTime * _movementSpeed;
+            _camera.transform.position -= (_camera.orthographic ? _camera.transform.up : _camera.transform.forward) * Time.deltaTime * _movementSpeed;
         }
 
         if (Input.GetKey(_leftKey) || Input.GetKey(_leftKeyAlt))
@@ -58,6 +66,11 @@ public class CameraController : MonoBehaviour
         else if (Input.GetKey(_rightKey) || Input.GetKey(_rightKeyAlt))
         {
             _camera.transform.position += _camera.transform.right * Time.deltaTime * _movementSpeed;
+        }
+
+        if (_camera.orthographic)
+        {
+            _camera.orthographicSize -= Input.GetAxis("Mouse ScrollWheel");
         }
     }
 }

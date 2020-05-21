@@ -1,5 +1,4 @@
-﻿using System.Collections.Generic;
-using UnityEngine;
+﻿using UnityEngine;
 using UnityEngine.UI;
 
 public class Tile : MonoBehaviour
@@ -9,47 +8,29 @@ public class Tile : MonoBehaviour
     [SerializeField]
     private Text _label = null;
 
-    public int x, z;
-    //public int pathfindingWeight;
-    //public List<Tile> path;
+    //public int x, z;
 
-    public IPathfindingNode Node { get; set; }
-
-    public IList<Tile> Path { get; set; }
-    public IList<Tile> Neighbors { get; set; }
-    public bool IsOccupied { get; set; }
-    public int Distance { get; set; }
+    public MapNode Node { get; set; }
 
     private Color _originalColor;
-    //private bool _isOccupied;
-    //private int _distance;
 
-    //public bool IsOccupied 
+    private Mesh _mesh;
+    private Color[] _colors;
+    private int _i1, _i2, _i3, _i4, _i5, _i6;
+
+    private static MaterialPropertyBlock _propertyBlock;
+
+    //public Tile(Mesh mesh, ref Color[] colors, int i1, int i2, int i3, int i4, int i5, int i6, Color color)
     //{
-    //    get => _isOccupied;
-    //    set 
-    //    {
-    //        _isOccupied = value;
-
-    //        if (value)
-    //        {
-    //            HideLabel();
-    //        }
-    //    } 
-    //}
-
-    //public int Distance
-    //{
-    //    get => _distance;
-    //    set
-    //    {
-    //        _distance = value;
-
-    //        if (_distance != int.MaxValue)
-    //            ShowDistance();
-    //        else
-    //            HideLabel();
-    //    }
+    //    _mesh = mesh;
+    //    _colors = colors;
+    //    _i1 = i1;
+    //    _i2 = i2;
+    //    _i3 = i3;
+    //    _i4 = i4;
+    //    _i5 = i5;
+    //    _i6 = i6;
+    //    _originalColor = color;
     //}
 
     public void Initialize(Vector3 localPosition, Color color)
@@ -58,28 +39,47 @@ public class Tile : MonoBehaviour
         SetColor(color);
         _originalColor = color;
         HideLabel();
-
-        Neighbors = new List<Tile>();
-
-        Node = new PathfindingNode();
-        Node.IsOccupied = false;
     }
 
     public void SetColor(Color color)
     {
-        _renderer.material.color = color;
+        //_renderer.material.color = color;
+
+        if(_propertyBlock == null)
+            _propertyBlock = new MaterialPropertyBlock();
+        _propertyBlock.SetColor("_Color", color);
+        _renderer.SetPropertyBlock(_propertyBlock);
     }
 
     public void ResetColor()
     {
-        _renderer.material.color = _originalColor;
+        //_renderer.material.color = _originalColor;
+
+        if (_propertyBlock == null)
+            _propertyBlock = new MaterialPropertyBlock();
+        _propertyBlock.SetColor("_Color", _originalColor);
+        _renderer.SetPropertyBlock(_propertyBlock);
     }
 
-    public void ShowCoordinates()
-    {
-        _label.gameObject.SetActive(true);
-        _label.text = string.Format("({0}, {1})", x, z);
-    }
+    //public void SetColor(Color color)
+    //{
+    //    _colors[_i1] = _colors[_i2] = _colors[_i3] =
+    //        _colors[_i4] = _colors[_i5] = _colors[_i6] = color;
+    //    _mesh.colors = _colors;
+    //}
+
+    //public void ResetColor()
+    //{
+    //    _colors[_i1] = _colors[_i2] = _colors[_i3] =
+    //        _colors[_i4] = _colors[_i5] = _colors[_i6] = _originalColor;
+    //    _mesh.colors = _colors;
+    //}
+
+    //public void ShowCoordinates()
+    //{
+    //    _label.gameObject.SetActive(true);
+    //    _label.text = string.Format("({0}, {1})", x, z);
+    //}
 
     //public void ShowWeight()
     //{
@@ -97,4 +97,5 @@ public class Tile : MonoBehaviour
     {
         _label.gameObject.SetActive(false);
     }
+
 }

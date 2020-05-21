@@ -5,18 +5,18 @@ using UnityEngine;
 
 public class DepthFirst : IPathfinder
 {
-    public IEnumerator FindPath(Tile start, Tile end, IList<Tile> validNodes, bool animateSearch = false, Action<IPathfindingNode> processingAction = null, Action<IPathfindingNode> processedAction = null)
+    public IEnumerator FindPath(MapNode start, MapNode end, IList<MapNode> validNodes, bool animateSearch = false, Action<MapNode> processingAction = null, Action<MapNode> processedAction = null)
     {
-        Stack<Tile> unprocessed = new Stack<Tile>();
-        List<Tile> processed = new List<Tile>();
+        Stack<MapNode> unprocessed = new Stack<MapNode>();
+        List<MapNode> processed = new List<MapNode>();
 
         unprocessed.Push(start);
         processed.Add(start);
-        start.Path = new List<Tile>();
+        start.Path = new List<MapNode>();
 
         while (unprocessed.Count > 0)
         {
-            Tile current = unprocessed.Pop();
+            MapNode current = unprocessed.Pop();
 
             if (current == end)
             {
@@ -24,21 +24,21 @@ public class DepthFirst : IPathfinder
                 yield break;
             }
 
-            IList<Tile> neighbors = current.Neighbors;
+            IList<MapNode> neighbors = current.ConnectedNeighbors;
             for (int i = 0; i < neighbors.Count; i++)
             {
-                Tile neighbor = neighbors[i];
+                MapNode neighbor = neighbors[i];
                 if (!processed.Contains(neighbor))
                 {
                     if (animateSearch && neighbor != start && neighbor != end)
                     {
-                        processingAction?.Invoke(neighbor.Node);
+                        processingAction?.Invoke(neighbor);
                         yield return new WaitForSeconds(0.05f);
                     }
 
                     unprocessed.Push(neighbor);
                     processed.Add(neighbor);
-                    neighbor.Path = new List<Tile>(current.Path);
+                    neighbor.Path = new List<MapNode>(current.Path);
                     if (current != start)
                         neighbor.Path.Add(current);
                 }
@@ -46,7 +46,7 @@ public class DepthFirst : IPathfinder
 
             if (animateSearch && current != start && current != end)
             {
-                processedAction?.Invoke(current.Node);
+                processedAction?.Invoke(current);
             }
         }
 

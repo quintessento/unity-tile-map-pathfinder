@@ -11,7 +11,7 @@ GameObject:
   - component: {fileID: 1594982525084780270}
   - component: {fileID: 6267334160180368564}
   - component: {fileID: 16179762364991671}
-  m_Layer: 0
+  m_Layer: 8
   m_Name: Label
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -90,8 +90,8 @@ GameObject:
   - component: {fileID: 973037036285598462}
   - component: {fileID: 5934400912181551626}
   - component: {fileID: 2307496696676674142}
-  - component: {fileID: -3481132753282013684}
-  m_Layer: 0
+  - component: {fileID: 5465387190259983430}
+  m_Layer: 8
   m_Name: Tile
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -129,7 +129,7 @@ MeshRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 7886422095503877580}
   m_Enabled: 1
-  m_CastShadows: 1
+  m_CastShadows: 0
   m_ReceiveShadows: 1
   m_DynamicOccludee: 1
   m_MotionVectors: 1
@@ -139,7 +139,7 @@ MeshRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 2100000, guid: c20832fbe2810b94ead16ca6a640f34d, type: 2}
+  - {fileID: 2100000, guid: 9993eae24bd4c71469d997d4a0bfa4bc, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
@@ -168,12 +168,12 @@ BoxCollider:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 7886422095503877580}
   m_Material: {fileID: 0}
-  m_IsTrigger: 0
+  m_IsTrigger: 1
   m_Enabled: 1
   serializedVersion: 2
   m_Size: {x: 1, y: 1.0000002, z: 6.123235e-17}
   m_Center: {x: 0, y: 0, z: 0}
---- !u!114 &-3481132753282013684
+--- !u!114 &5465387190259983430
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -187,9 +187,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   _renderer: {fileID: 5934400912181551626}
   _label: {fileID: 16179762364991671}
-  x: 0
-  z: 0
-  pathfindingWeight: 1
 --- !u!1 &8636943285074818771
 GameObject:
   m_ObjectHideFlags: 0
@@ -202,7 +199,7 @@ GameObject:
   - component: {fileID: 3387203872333531684}
   - component: {fileID: 2456055489181581697}
   - component: {fileID: 4930905965132754906}
-  m_Layer: 0
+  m_Layer: 8
   m_Name: Canvas
   m_TagString: Untagged
   m_Icon: {fileID: 0}

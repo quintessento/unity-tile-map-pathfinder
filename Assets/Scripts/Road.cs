@@ -22,11 +22,13 @@ public class Road : MonoBehaviour
             //_vertices[2] = _vertices[3] = Tile2.transform.position;
             //_mesh.vertices = _vertices;
             //_mesh.RecalculateBounds();
-            transform.localPosition = (Tile1.transform.localPosition + Tile2.transform.localPosition) * 0.5f;
-            float distance = Vector3.Distance(Tile1.transform.position, Tile2.transform.position);
-            Vector3 scale = transform.localScale;
-            scale.x = distance;
-            transform.localScale = scale;
+
+
+            //transform.localPosition = (Tile1.transform.localPosition + Tile2.transform.localPosition) * 0.5f;
+            //float distance = Vector3.Distance(Tile1.transform.position, Tile2.transform.position);
+            //Vector3 scale = transform.localScale;
+            //scale.x = distance;
+            //transform.localScale = scale;
         }
     }
 }

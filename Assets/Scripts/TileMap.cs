@@ -1,10 +1,12 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using UnityEngine;
 using Random = UnityEngine.Random;
 
+[RequireComponent(typeof(MeshFilter), typeof(MeshRenderer))]
 public class TileMap : MonoBehaviour
 {
     [Header("Prefabs")]
@@ -13,7 +15,7 @@ public class TileMap : MonoBehaviour
     [SerializeField]
     private Road _roadPrefab = null;
     [SerializeField]
-    private GameObject _obstaclePrefab = null;
+    private Obstacle _obstaclePrefab = null;
 
     [Header("Map Settings")]
     [SerializeField]
@@ -28,21 +30,48 @@ public class TileMap : MonoBehaviour
     private TileSelector _tileSelector = null;
 
     private Tile[,] _tiles;
-    private int[,] _tileIntMap;
 
     private List<Tile> _allTiles = new List<Tile>();
-    private List<Tile> _emptyTiles = new List<Tile>();
-    private List<GameObject> _obstacles = new List<GameObject>();
 
-    private Dictionary<IPathfindingNode, Tile> _nodeToTile = new Dictionary<IPathfindingNode, Tile>();
+    private ListPool<Obstacle> _obstaclesPool = new ListPool<Obstacle>();
+    private List<Obstacle> _obstacles = new List<Obstacle>();
 
-    public Tile GetTile(int x, int z)
+    //TODO: try to get rid of
+    private Dictionary<MapNode, Tile> _nodeToTile = new Dictionary<MapNode, Tile>();
+
+    private Map _map;
+    private Color[] _colors;
+
+    private string _saveFilePath;
+
+    private void Awake()
     {
-        if(x >= 0 && x < _tiles.GetLength(0) && z >= 0 && z < _tiles.GetLength(1))
+        _saveFilePath = Path.Combine(Application.dataPath, "save.sav");
+    }
+
+    public void Save()
+    {
+        using (BinaryWriter writer = new BinaryWriter(File.Open(_saveFilePath, FileMode.Create))) 
         {
-            return _tiles[x, z];
+            _map.Save(writer);
         }
-        return null;
+    }
+
+    public void Load()
+    {
+        using (BinaryReader reader = new BinaryReader(File.Open(_saveFilePath, FileMode.Open))) 
+        {
+            _map = new Map(reader);
+        }
+
+        GenerateTileMap(_map);
+    }
+
+    public Tile GetTile(float x, float z)
+    {
+        int xIndex = (int)(x / 1f + 1f * 0.5f);
+        int zIndex = (int)(z / 1f + 1f * 0.5f);
+        return _tiles[xIndex, zIndex];
     }
 
     public void RandomizeStartEnd()
@@ -57,61 +86,21 @@ public class TileMap : MonoBehaviour
         StopAllCoroutines();
         _tileSelector.Reset();
 
-        for (int i = 0; i < _allTiles.Count; i++)
-        {
-            Destroy(_allTiles[i].gameObject);
-        }
         _allTiles.Clear();
 
         for (int i = 0; i < _obstacles.Count; i++)
         {
-            Destroy(_obstacles[i].gameObject);
+            _obstaclesPool.Add(_obstacles[i]);
         }
         _obstacles.Clear();
 
-        _emptyTiles.Clear();
         _nodeToTile.Clear();
 
-        _tiles = new Tile[_sizeX, _sizeZ];
-        _tileIntMap = new int[_sizeX, _sizeZ];
+        _sizeX = _sizeZ = Settings.MapSize;
+        _numObstacles = Settings.NumObstacles;
 
-
-        for (int x = 0; x < _sizeX; x++)
-        {
-            for (int z = 0; z < _sizeZ; z++)
-            {
-                Tile tile = Instantiate(_tilePrefab, transform);
-                tile.Initialize(
-                    new Vector3(x, 0f, z), 
-                    Random.ColorHSV(0.19f, 0.2f, 0.5f, 0.6f, 0.7f, 0.8f)
-                );
-                _tiles[x, z] = tile;
-                tile.x = x;
-                tile.z = z;
-                _tileIntMap[x, z] = 0;
-
-                _allTiles.Add(tile);
-                _emptyTiles.Add(tile);
-            }
-        }
-
-        for (int i = 0; i < _numObstacles; i++)
-        {
-            PlaceObstacles();
-        }
-
-        //TODO: optimize and move to the initial loop
-        for (int i = 0; i < _allTiles.Count; i++)
-        {
-            _allTiles[i].Neighbors = GetNeighbors(_allTiles[i]);
-            //for (int j = 0; j < _allTiles[i].Neighbors.Count; j++)
-            //{
-            //    Road road = Instantiate(_roadPrefab, transform);
-            //    road.Tile1 = _allTiles[i];
-            //    road.Tile2 = _allTiles[i].Neighbors[j];
-            //}
-            _nodeToTile.Add(_allTiles[i].Node, _allTiles[i]);
-        }
+        _map = new Map(_sizeX, _sizeZ, _numObstacles);
+        GenerateTileMap(_map);
     }
 
     public void FindPath()
@@ -138,19 +127,19 @@ public class TileMap : MonoBehaviour
 
     private IEnumerator FindPathCoroutine()
     {
-        Tile start = _tileSelector.StartTile;
-        Tile end = _tileSelector.EndTile;
+        MapNode start = _tileSelector.StartTile.Node;
+        MapNode end = _tileSelector.EndTile.Node;
 
         for (int i = 0; i < _allTiles.Count; i++)
         {
-            _allTiles[i].Distance = int.MaxValue;
+            _allTiles[i].Node.Distance = int.MaxValue;
         }
 
         IPathfinder algo = PathfindersFactory.GetPathfinderForType(Settings.Pathfinder);
         IEnumerator algoCoroutine = algo.FindPath(
             start, 
-            end, 
-            _allTiles.Where(x => !x.IsOccupied).ToArray(), 
+            end,
+            _map.AsArray.Where(x => !x.HasObstacle).ToArray(), 
             Settings.AnimateSearch, 
             (node) => 
             { 
@@ -162,13 +151,13 @@ public class TileMap : MonoBehaviour
             }
         );
         yield return algoCoroutine;
-        List<Tile> path = algoCoroutine.Current as List<Tile>;
+        List<MapNode> path = algoCoroutine.Current as List<MapNode>;
 
         if (path != null && path.Count > 0)
         {
             for (int i = 0; i < path.Count; i++)
             {
-                _nodeToTile[path[i].Node].SetColor(Color.white);
+                _nodeToTile[path[i]].SetColor(Color.white);
                 yield return new WaitForSeconds(0.1f);
             }
         }
@@ -181,126 +170,105 @@ public class TileMap : MonoBehaviour
         yield return null;
     }
 
-    private List<Tile> GetNeighbors(Tile tile)
+    private void GenerateTileMap(Map map)
     {
-        List<Tile> neighbors = new List<Tile>();
+        _tiles = new Tile[_sizeX, _sizeZ];
 
-        for (int i = -1; i <= 1; i++)
+        Mesh mesh = new Mesh();
+
+        List<Vector3> vertices = new List<Vector3>();
+        List<int> triangles = new List<int>();
+        _colors = new Color[map.SizeX * map.SizeZ * 6];
+
+        float squareSize = 1f;
+        float squareHalfSize = squareSize * 0.5f;
+
+        for (int x = 0; x < map.SizeX; x++)
         {
-            for (int j = -1; j <= 1; j++)
+            for (int z = 0; z < map.SizeZ; z++)
             {
-                if (i == 0 && j == 0)
+                MapNode node = map[x, z];
+
+                //int i1 = vertices.Count;
+                //int i2 = i1 + 1;
+                //int i3 = i1 + 2;
+                //int i4 = i1 + 3;
+                //int i5 = i1 + 4;
+                //int i6 = i1 + 5;
+
+                //vertices.Add(new Vector3(x - squareHalfSize, 0f, z - squareHalfSize));
+                //vertices.Add(new Vector3(x - squareHalfSize, 0f, z + squareHalfSize));
+                //vertices.Add(new Vector3(x + squareHalfSize, 0f, z + squareHalfSize));
+                //triangles.Add(i1);
+                //triangles.Add(i2);
+                //triangles.Add(i3);
+
+                //vertices.Add(new Vector3(x - squareHalfSize, 0f, z - squareHalfSize));
+                //vertices.Add(new Vector3(x + squareHalfSize, 0f, z + squareHalfSize));
+                //vertices.Add(new Vector3(x + squareHalfSize, 0f, z - squareHalfSize));
+                //triangles.Add(i4);
+                //triangles.Add(i5);
+                //triangles.Add(i6);
+
+                Color tileColor = Random.ColorHSV(0.19f, 0.2f, 0.5f, 0.6f, 0.7f, 0.8f);
+                //_colors[i1] = tileColor;
+                //_colors[i2] = tileColor;
+                //_colors[i3] = tileColor;
+                //_colors[i4] = tileColor;
+                //_colors[i5] = tileColor;
+                //_colors[i6] = tileColor;
+
+                //Tile tile = new Tile(mesh, ref _colors, i1, i2, i3, i4, i5, i6, tileColor);
+
+                Tile tile = Instantiate(_tilePrefab, transform);
+                tile.Initialize(new Vector3(x, 0f, z), tileColor);
+                _tiles[x, z] = tile;
+                tile.Node = node;
+
+                _allTiles.Add(tile);
+
+                if (node.HasObstacle)
                 {
-                    //it's the current tile -> skip
-                    continue;
+                    PlaceObstacle(x, z);
                 }
 
-                if (Mathf.Abs(i) == Mathf.Abs(j))
-                {
-                    //we are going in diagonal -> skip
-                    continue;
-                }
-
-                Tile neighbor = GetTile(tile.x + i, tile.z + j);
-                if (neighbor == null)
-                {
-                    //null -> skip
-                    continue;
-                }
-
-                if (neighbor.Node.IsOccupied)
-                {
-                    //has an obstacle -> skip
-                    continue;
-                }
-
-                neighbors.Add(neighbor);
+                _nodeToTile[node] = tile;
             }
         }
 
-        return neighbors;
+        //mesh.vertices = vertices.ToArray();
+        //mesh.triangles = triangles.ToArray();
+        //mesh.colors = _colors;
+        //mesh.RecalculateNormals();
+        //GetComponent<MeshFilter>().mesh = mesh;
+        //GetComponent<MeshCollider>().sharedMesh = mesh;
     }
 
-    private void PlaceObstacles()
+    private void PlaceObstacle(int x, int z)
     {
-        int[,] obstacleBlueprint = Obstacles.RandomDeclared;
+        int tileX = x;
+        int tileZ = z;
 
-        int obstacleSizeX = obstacleBlueprint.GetLength(0);
-        int obstacleSizeZ = obstacleBlueprint.GetLength(1);
-
-        List<List<Tuple<int, int>>> possiblePlacements = new List<List<Tuple<int, int>>>();
-
-        for (int x = 0; x < _sizeX - obstacleSizeZ + 1; x++)
+        Obstacle obstacle = _obstaclesPool.Get();
+        if(obstacle == null)
         {
-            for (int z = 0; z < _sizeZ - obstacleSizeX + 1; z++)
-            {
-                bool fits = true;
-                List<Tuple<int, int>> coords = new List<Tuple<int, int>>();
-                
-                for (int i = 0; i < obstacleSizeZ; i++)
-                {
-                    for (int j = 0; j < obstacleSizeX; j++)
-                    {
-                        //reverse x so that we get the blueprint values in the correct order
-                        if (obstacleBlueprint[obstacleSizeX - j - 1, i] == 0)
-                        {
-                            //skip empty
-                            continue;
-                        }
-
-                        int obstacleX = x + i;
-                        int obstacleZ = z + j;
-                        if(_tileIntMap[obstacleX, obstacleZ] == 1)
-                        {
-                            //placement is invalid, because one of the required tiles is already occupied
-                            fits = false;
-                            continue;
-                        }
-                        coords.Add(new Tuple<int, int>(obstacleX, obstacleZ));
-                    }
-                }
-
-                if (fits)
-                {
-                    possiblePlacements.Add(coords);
-                }
-            }
+            obstacle = Instantiate(_obstaclePrefab);
         }
+        obstacle.transform.SetParent(transform);
 
-        if (possiblePlacements.Count > 0)
-        {
-            List<Tuple<int, int>> placement = possiblePlacements[Random.Range(0, possiblePlacements.Count)];
-            PlaceObstacle(placement);
-        }
-    }
+        obstacle.transform.localPosition = new Vector3(tileX, 0.5f, tileZ);
+        obstacle.GetComponent<Renderer>().material.color = Random.ColorHSV(
+            hueMin: 0.39f, hueMax: 0.4f,
+            saturationMin: 0.5f, saturationMax: 0.6f,
+            valueMin: 0.7f, valueMax: 0.8f
+        );
 
-    private void PlaceObstacle(List<Tuple<int, int>> coords)
-    {
-
-        for (int i = 0; i < coords.Count; i++)
-        {
-            int tileX = coords[i].Item1;
-            int tileZ = coords[i].Item2;
-            GameObject obstacle = Instantiate(_obstaclePrefab, transform);
-            obstacle.transform.localPosition = new Vector3(tileX, 0.5f, tileZ);
-            obstacle.GetComponent<Renderer>().material.color = Random.ColorHSV(
-                hueMin: 0.39f, hueMax: 0.4f,
-                saturationMin: 0.5f, saturationMax: 0.6f,
-                valueMin: 0.7f, valueMax: 0.8f
-            );
-
-            _obstacles.Add(obstacle);
-
-            Tile tile = _tiles[tileX, tileZ];
-            tile.Node.IsOccupied = true;
-            _tileIntMap[tileX, tileZ] = 1;
-            _emptyTiles.Remove(tile);
-        }
+        _obstacles.Add(obstacle);
     }
 
     private void Start()
     {
-        GenerateMap();
+        //GenerateMap();
 
         _tileSelector.StartTileSelected += OnStartTileSelected;
         _tileSelector.EndTileSelected += OnEndTileSelected;
@@ -331,10 +299,8 @@ public class TileMap : MonoBehaviour
         ResetHighlights();
     }
 
-    private int DistanceFromTo(Tile from, Tile to)
+    private void OnValidate()
     {
-        return 
-            ((from.x > to.x ? from.x - to.x : to.x - from.x) +
-            (from.z > to.z ? from.z - to.z : to.z - from.z));
+        
     }
 }
