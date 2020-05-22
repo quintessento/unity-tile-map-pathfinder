@@ -6,16 +6,11 @@ using System.Linq;
 using UnityEngine;
 using Random = UnityEngine.Random;
 
-[RequireComponent(typeof(MeshFilter), typeof(MeshRenderer))]
 public class TileMap : MonoBehaviour
 {
     [Header("Prefabs")]
     [SerializeField]
-    private Tile _tilePrefab = null;
-    [SerializeField]
-    private Road _roadPrefab = null;
-    [SerializeField]
-    private Obstacle _obstaclePrefab = null;
+    private TileChunk _tileChunkPrefab = null;
 
     [Header("Map Settings")]
     [SerializeField]
@@ -29,18 +24,24 @@ public class TileMap : MonoBehaviour
     [SerializeField]
     private TileSelector _tileSelector = null;
 
-    private Tile[,] _tiles;
+    private int _tilesPerChunkX = 10, _tilesPerChunkZ = 10;
+    private int _numChunksX, _numChunksZ;
 
+    //private ListPool<Tile> _tilesPool = new ListPool<Tile>();
+    private Tile[,] _tiles;
     private List<Tile> _allTiles = new List<Tile>();
 
-    private ListPool<Obstacle> _obstaclesPool = new ListPool<Obstacle>();
-    private List<Obstacle> _obstacles = new List<Obstacle>();
+    //private ListPool<Obstacle> _obstaclesPool = new ListPool<Obstacle>();
+    //private List<Obstacle> _obstacles = new List<Obstacle>();
+
+    private ListPool<TileChunk> _chunksPool = new ListPool<TileChunk>();
+    private List<TileChunk> _tileChunks = new List<TileChunk>();
 
     //TODO: try to get rid of
     private Dictionary<MapNode, Tile> _nodeToTile = new Dictionary<MapNode, Tile>();
 
     private Map _map;
-    private Color[] _colors;
+    //private Color[] _colors;
 
     private string _saveFilePath;
 
@@ -72,6 +73,9 @@ public class TileMap : MonoBehaviour
         int xIndex = (int)(x / 1f + 1f * 0.5f);
         int zIndex = (int)(z / 1f + 1f * 0.5f);
         return _tiles[xIndex, zIndex];
+        //Debug.Log(xIndex + ", " + zIndex);
+        //int index = zIndex + _map.SizeX * xIndex;
+        //return _allTiles[index];
     }
 
     public void RandomizeStartEnd()
@@ -86,14 +90,13 @@ public class TileMap : MonoBehaviour
         StopAllCoroutines();
         _tileSelector.Reset();
 
-        _allTiles.Clear();
-
-        for (int i = 0; i < _obstacles.Count; i++)
+        for (int i = 0; i < _tileChunks.Count; i++)
         {
-            _obstaclesPool.Add(_obstacles[i]);
+            _chunksPool.Add(_tileChunks[i]);
         }
-        _obstacles.Clear();
+        _tileChunks.Clear();
 
+        _allTiles.Clear();
         _nodeToTile.Clear();
 
         _sizeX = _sizeZ = Settings.MapSize;
@@ -111,17 +114,6 @@ public class TileMap : MonoBehaviour
         {
             StopAllCoroutines();
             StartCoroutine(FindPathCoroutine());
-        }
-    }
-
-    private void ResetHighlights()
-    {
-        for (int i = 0; i < _allTiles.Count; i++)
-        {
-            if (_allTiles[i] == _tileSelector.StartTile || _allTiles[i] == _tileSelector.EndTile)
-                continue;
-
-            _allTiles[i].ResetColor();
         }
     }
 
@@ -170,100 +162,48 @@ public class TileMap : MonoBehaviour
         yield return null;
     }
 
+    private void ResetHighlights()
+    {
+        for (int i = 0; i < _allTiles.Count; i++)
+        {
+            if (_allTiles[i] == _tileSelector.StartTile || _allTiles[i] == _tileSelector.EndTile)
+                continue;
+
+            _allTiles[i].ResetColor();
+        }
+    }
+
+
     private void GenerateTileMap(Map map)
     {
         _tiles = new Tile[_sizeX, _sizeZ];
 
-        Mesh mesh = new Mesh();
+        _numChunksX = map.SizeX / _tilesPerChunkX;
+        _numChunksZ = map.SizeZ / _tilesPerChunkZ;
 
-        List<Vector3> vertices = new List<Vector3>();
-        List<int> triangles = new List<int>();
-        _colors = new Color[map.SizeX * map.SizeZ * 6];
-
-        float squareSize = 1f;
-        float squareHalfSize = squareSize * 0.5f;
-
-        for (int x = 0; x < map.SizeX; x++)
-        {
-            for (int z = 0; z < map.SizeZ; z++)
-            {
-                MapNode node = map[x, z];
-
-                //int i1 = vertices.Count;
-                //int i2 = i1 + 1;
-                //int i3 = i1 + 2;
-                //int i4 = i1 + 3;
-                //int i5 = i1 + 4;
-                //int i6 = i1 + 5;
-
-                //vertices.Add(new Vector3(x - squareHalfSize, 0f, z - squareHalfSize));
-                //vertices.Add(new Vector3(x - squareHalfSize, 0f, z + squareHalfSize));
-                //vertices.Add(new Vector3(x + squareHalfSize, 0f, z + squareHalfSize));
-                //triangles.Add(i1);
-                //triangles.Add(i2);
-                //triangles.Add(i3);
-
-                //vertices.Add(new Vector3(x - squareHalfSize, 0f, z - squareHalfSize));
-                //vertices.Add(new Vector3(x + squareHalfSize, 0f, z + squareHalfSize));
-                //vertices.Add(new Vector3(x + squareHalfSize, 0f, z - squareHalfSize));
-                //triangles.Add(i4);
-                //triangles.Add(i5);
-                //triangles.Add(i6);
-
-                Color tileColor = Random.ColorHSV(0.19f, 0.2f, 0.5f, 0.6f, 0.7f, 0.8f);
-                //_colors[i1] = tileColor;
-                //_colors[i2] = tileColor;
-                //_colors[i3] = tileColor;
-                //_colors[i4] = tileColor;
-                //_colors[i5] = tileColor;
-                //_colors[i6] = tileColor;
-
-                //Tile tile = new Tile(mesh, ref _colors, i1, i2, i3, i4, i5, i6, tileColor);
-
-                Tile tile = Instantiate(_tilePrefab, transform);
-                tile.Initialize(new Vector3(x, 0f, z), tileColor);
-                _tiles[x, z] = tile;
-                tile.Node = node;
-
-                _allTiles.Add(tile);
-
-                if (node.HasObstacle)
-                {
-                    PlaceObstacle(x, z);
-                }
-
-                _nodeToTile[node] = tile;
-            }
-        }
-
-        //mesh.vertices = vertices.ToArray();
-        //mesh.triangles = triangles.ToArray();
-        //mesh.colors = _colors;
-        //mesh.RecalculateNormals();
-        //GetComponent<MeshFilter>().mesh = mesh;
-        //GetComponent<MeshCollider>().sharedMesh = mesh;
+        CreateTileChunks();
     }
 
-    private void PlaceObstacle(int x, int z)
+    private void CreateTileChunks()
     {
-        int tileX = x;
-        int tileZ = z;
-
-        Obstacle obstacle = _obstaclesPool.Get();
-        if(obstacle == null)
+        for (int x = 0; x < _numChunksX; x++)
         {
-            obstacle = Instantiate(_obstaclePrefab);
+            for (int z = 0; z < _numChunksZ; z++)
+            {
+                TileChunk chunk = _chunksPool.Get();
+                if (chunk == null)
+                {
+                    chunk = Instantiate(_tileChunkPrefab);
+                }
+                chunk.transform.SetParent(transform);
+
+                int numTilesXInChunk = 10;
+                int numTilesZInChunk = 10;
+                chunk.GenerateTiles(numTilesXInChunk, numTilesZInChunk, x, z, _map, _allTiles, _tiles, _nodeToTile);
+
+                _tileChunks.Add(chunk);
+            }
         }
-        obstacle.transform.SetParent(transform);
-
-        obstacle.transform.localPosition = new Vector3(tileX, 0.5f, tileZ);
-        obstacle.GetComponent<Renderer>().material.color = Random.ColorHSV(
-            hueMin: 0.39f, hueMax: 0.4f,
-            saturationMin: 0.5f, saturationMax: 0.6f,
-            valueMin: 0.7f, valueMax: 0.8f
-        );
-
-        _obstacles.Add(obstacle);
     }
 
     private void Start()
@@ -279,17 +219,6 @@ public class TileMap : MonoBehaviour
         //stop pathfinding
         StopAllCoroutines();
         ResetHighlights();
-
-        //for (int x = 0; x < _sizeX; x++)
-        //{
-        //    for (int z = 0; z < _sizeZ; z++)
-        //    {
-        //        Tile tile = _tiles[x, z];
-        //        tile.Distance = DistanceFromTo(_tileSelector.StartTile, tile);
-        //    }
-        //}
-
-        //_tileSelector.StartTile.Distance = 0;
     }
 
     private void OnEndTileSelected(object sender, EventArgs e)
@@ -297,10 +226,5 @@ public class TileMap : MonoBehaviour
         //stop pathfinding
         StopAllCoroutines();
         ResetHighlights();
-    }
-
-    private void OnValidate()
-    {
-        
     }
 }

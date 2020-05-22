@@ -26,7 +26,7 @@ public class Map
                 MapNode node = new MapNode(x, z);
                 _nodes[x, z] = node;
 
-                int index = x + sizeZ * z;
+                int index = z + sizeX * x;
                 _nodesArray[index] = node;
             }
         }

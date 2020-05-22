@@ -56,9 +56,8 @@ public class TileSelector : MonoBehaviour
             RaycastHit hit;
             if(Physics.Raycast(ray, out hit, Mathf.Infinity))
             {
-                //Vector3 hitPosition = transform.InverseTransformPoint(hit.point);
-                //Tile tile = GetComponent<TileMap>().GetTile(hitPosition.x, hitPosition.z);
-                Tile tile = hit.collider.GetComponent<Tile>();
+                Vector3 hitPosition = transform.InverseTransformPoint(hit.point);
+                Tile tile = GetComponent<TileMap>().GetTile(hitPosition.x, hitPosition.z);
 
                 if (tile != null && !tile.Node.HasObstacle && tile != _startTile && tile != _endTile)
                 {

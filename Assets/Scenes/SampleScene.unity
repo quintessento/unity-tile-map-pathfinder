@@ -1490,9 +1490,6 @@ GameObject:
   - component: {fileID: 548560497}
   - component: {fileID: 548560496}
   - component: {fileID: 548560500}
-  - component: {fileID: 548560499}
-  - component: {fileID: 548560498}
-  - component: {fileID: 548560501}
   m_Layer: 0
   m_Name: Tile Map
   m_TagString: Untagged
@@ -1512,9 +1509,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d264b71887bd04f40b0d27ef256112a6, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  _tilePrefab: {fileID: 5465387190259983430, guid: 002f841885dbcc443b7154491bab0ba2,
-    type: 3}
-  _roadPrefab: {fileID: 2265821373864299613, guid: 25216129b25d2734caaab0321f70ea79,
+  _tileChunkPrefab: {fileID: 734304037539900229, guid: df38f708ea4aca24f8d24a9f644aa6e2,
     type: 3}
   _obstaclePrefab: {fileID: -403232446471318041, guid: 4385f8a6698c38348a3460559224ccc3,
     type: 3}
@@ -1536,53 +1531,6 @@ Transform:
   m_Father: {fileID: 0}
   m_RootOrder: 4
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!23 &548560498
-MeshRenderer:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 548560495}
-  m_Enabled: 1
-  m_CastShadows: 1
-  m_ReceiveShadows: 1
-  m_DynamicOccludee: 1
-  m_MotionVectors: 1
-  m_LightProbeUsage: 1
-  m_ReflectionProbeUsage: 1
-  m_RayTracingMode: 2
-  m_RenderingLayerMask: 1
-  m_RendererPriority: 0
-  m_Materials:
-  - {fileID: 2100000, guid: c20832fbe2810b94ead16ca6a640f34d, type: 2}
-  m_StaticBatchInfo:
-    firstSubMesh: 0
-    subMeshCount: 0
-  m_StaticBatchRoot: {fileID: 0}
-  m_ProbeAnchor: {fileID: 0}
-  m_LightProbeVolumeOverride: {fileID: 0}
-  m_ScaleInLightmap: 1
-  m_ReceiveGI: 1
-  m_PreserveUVs: 0
-  m_IgnoreNormalsForChartDetection: 0
-  m_ImportantGI: 0
-  m_StitchLightmapSeams: 1
-  m_SelectedEditorRenderState: 3
-  m_MinimumChartSize: 4
-  m_AutoUVMaxDistance: 0.5
-  m_AutoUVMaxAngle: 89
-  m_LightmapParameters: {fileID: 0}
-  m_SortingLayerID: 0
-  m_SortingLayer: 0
-  m_SortingOrder: 0
---- !u!33 &548560499
-MeshFilter:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 548560495}
-  m_Mesh: {fileID: 0}
 --- !u!114 &548560500
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1595,20 +1543,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: b3d5aa57703a4d049a0e04ecccacdc54, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
---- !u!64 &548560501
-MeshCollider:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 548560495}
-  m_Material: {fileID: 0}
-  m_IsTrigger: 0
-  m_Enabled: 1
-  serializedVersion: 4
-  m_Convex: 0
-  m_CookingOptions: 30
-  m_Mesh: {fileID: 0}
 --- !u!1 &638110794
 GameObject:
   m_ObjectHideFlags: 0
