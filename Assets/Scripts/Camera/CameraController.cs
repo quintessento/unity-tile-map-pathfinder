@@ -50,27 +50,33 @@ public class CameraController : MonoBehaviour
             _camera.transform.forward = Vector3.MoveTowards(_camera.transform.forward, ray.direction, Time.deltaTime);
         }
 
+        float cameraSpeed = _movementSpeed;
+        if (Input.GetKey(KeyCode.LeftShift))
+        {
+            cameraSpeed *= 10;
+        }
+
         if(Input.GetKey(_forwardKey) || Input.GetKey(_forwardKeyAlt))
         {
-            _camera.transform.position += (_camera.orthographic ? _camera.transform.up : _camera.transform.forward) * Time.deltaTime * _movementSpeed;
+            _camera.transform.position += (_camera.orthographic ? _camera.transform.up : _camera.transform.forward) * Time.deltaTime * cameraSpeed;
         }
         else if(Input.GetKey(_backKey) || Input.GetKey(_backKeyAlt))
         {
-            _camera.transform.position -= (_camera.orthographic ? _camera.transform.up : _camera.transform.forward) * Time.deltaTime * _movementSpeed;
+            _camera.transform.position -= (_camera.orthographic ? _camera.transform.up : _camera.transform.forward) * Time.deltaTime * cameraSpeed;
         }
 
         if (Input.GetKey(_leftKey) || Input.GetKey(_leftKeyAlt))
         {
-            _camera.transform.position -= _camera.transform.right * Time.deltaTime * _movementSpeed;
+            _camera.transform.position -= _camera.transform.right * Time.deltaTime * cameraSpeed;
         }
         else if (Input.GetKey(_rightKey) || Input.GetKey(_rightKeyAlt))
         {
-            _camera.transform.position += _camera.transform.right * Time.deltaTime * _movementSpeed;
+            _camera.transform.position += _camera.transform.right * Time.deltaTime * cameraSpeed;
         }
 
         if (_camera.orthographic)
         {
-            _camera.orthographicSize -= Input.GetAxis("Mouse ScrollWheel");
+            _camera.orthographicSize -= Input.GetAxis("Mouse ScrollWheel") * 10f;
         }
     }
 }

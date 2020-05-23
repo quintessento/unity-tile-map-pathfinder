@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
-using UnityEngine;
 using Random = UnityEngine.Random;
 
 public class Map
@@ -10,31 +9,37 @@ public class Map
     public int SizeZ { get; private set; }
 
     private MapNode[,] _nodes;
-    private MapNode[] _nodesArray;
 
-    public Map(int sizeX, int sizeZ, int numObstacles)
+    public Map(int sizeX, int sizeZ, int numObstacles, bool weighted = false)
 	{
         SizeX = sizeX;
         SizeZ = sizeZ;
-
-        _nodesArray = new MapNode[sizeX * sizeZ];
+        
+        NodesList = new List<MapNode>(sizeX * sizeZ);
         _nodes = new MapNode[sizeX, sizeZ];
-        for (int x = 0; x < sizeX; x++)
+        for (int z = 0; z < sizeZ; z++)
         {
-            for (int z = 0; z < sizeZ; z++)
+            for (int x = 0; x < sizeX; x++)
             {
-                MapNode node = new MapNode(x, z);
+                int weight = 1;
+                if(weighted)
+                {
+                    weight = Random.value > 0.3f ? 1 : Random.Range(2, 10);
+                }
+
+                MapNode node = new MapNode(x, z, weight);
                 _nodes[x, z] = node;
 
-                int index = z + sizeX * x;
-                _nodesArray[index] = node;
+                AssignNeighbors(node, x, z);
+
+                NodesList.Add(node);
             }
         }
 
-        for (int i = 0; i < _nodesArray.Length; i++)
-        {
-            _nodesArray[i].ConnectedNeighbors = GetNeighbors(_nodesArray[i]);
-        }
+        //for (int i = 0; i < NodesList.Count; i++)
+        //{
+        //    NodesList[i].ConnectedNeighbors = GetNeighbors(NodesList[i]);
+        //}
 
         for (int i = 0; i < numObstacles; i++)
         {
@@ -47,7 +52,7 @@ public class Map
         SizeX = reader.ReadInt32();
         SizeZ = reader.ReadInt32();
 
-        _nodesArray = new MapNode[SizeX * SizeZ];
+        NodesList = new List<MapNode>(SizeX * SizeZ);
         _nodes = new MapNode[SizeX, SizeZ];
         for (int x = 0; x < SizeX; x++)
         {
@@ -56,72 +61,126 @@ public class Map
                 MapNode node = new MapNode(reader);
                 _nodes[x, z] = node;
 
-                int index = x + SizeZ * z;
-                _nodesArray[index] = node;
+                NodesList.Add(node);
             }
         }
 
-        for (int i = 0; i < _nodesArray.Length; i++)
-        {
-            _nodesArray[i].ConnectedNeighbors = GetNeighbors(_nodesArray[i]);
-        }
+        //for (int i = 0; i < NodesList.Count; i++)
+        //{
+        //    NodesList[i].ConnectedNeighbors = GetNeighbors(NodesList[i]);
+        //}
     }
 
     public MapNode this[int x, int z] => _nodes[x, z];
 
-    public MapNode[] AsArray => _nodesArray;
+    public List<MapNode> NodesList { get; }
 
     public void Save(BinaryWriter writer)
     {
         writer.Write(SizeX);
         writer.Write(SizeZ);
-        for (int i = 0; i < _nodesArray.Length; i++)
+        for (int i = 0; i < NodesList.Count; i++)
         {
-            _nodesArray[i].Save(writer);
+            NodesList[i].Save(writer);
         }
     }
 
-    private List<MapNode> GetNeighbors(MapNode node)
+    private void AssignNeighbors(MapNode node, int x, int z)
     {
-        List<MapNode> neighbors = new List<MapNode>();
-
-        for (int i = -1; i <= 1; i++)
+        if (x > 0 && x < (SizeX - 1) && z > 0 && z < (SizeZ - 1))
         {
-            for (int j = -1; j <= 1; j++)
-            {
-                if (i == 0 && j == 0)
-                {
-                    //it's the current tile -> skip
-                    continue;
-                }
-
-                if (Mathf.Abs(i) == Mathf.Abs(j))
-                {
-                    //we are going in diagonal -> skip
-                    continue;
-                }
-
-                int xIndex = Mathf.Clamp(node.XIndex + i, 0, SizeX - 1);
-                int zIndex = Mathf.Clamp(node.ZIndex + j, 0, SizeZ - 1);
-
-                MapNode neighbor = _nodes[xIndex, zIndex];
-                if (neighbor == null)
-                {
-                    //null -> skip
-                    continue;
-                }
-                if (neighbor.HasObstacle)
-                {
-                    //skip the neigbor with obstacle (in case we are loading the map)
-                    continue;
-                }
-
-                neighbors.Add(neighbor);
-            }
+            //middle of the map
+            node.AddNeighbor(_nodes[x - 1, z]);
+            node.AddNeighbor(_nodes[x, z - 1]);
         }
-
-        return neighbors;
+        else if (x == 0 && z > 0 && z < (SizeZ - 1))
+        {
+            //left border
+            node.AddNeighbor(_nodes[x, z - 1]);
+        }
+        else if (x == (SizeX - 1) && z > 0 && z < (SizeZ - 1))
+        {
+            //right border
+            node.AddNeighbor(_nodes[x, z - 1]);
+            node.AddNeighbor(_nodes[x - 1, z]);
+        }
+        else if (z == 0 && x > 0 && x < (SizeX - 1))
+        {
+            //bottom border
+            node.AddNeighbor(_nodes[x - 1, z]);
+        }
+        else if (z == (SizeZ - 1) && x > 0 && x < (SizeX - 1))
+        {
+            //top border
+            node.AddNeighbor(_nodes[x, z - 1]);
+            node.AddNeighbor(_nodes[x - 1, z]);
+        }
+        else if (x == 0 && z == 0)
+        {
+            //BL corner
+        }
+        else if (x == (SizeX - 1) && z == (SizeZ - 1))
+        {
+            //TR corner
+            node.AddNeighbor(_nodes[x - 1, z]);
+            node.AddNeighbor(_nodes[x, z - 1]);
+        }
+        else if (x == (SizeX - 1) && z == 0)
+        {
+            //BR corner
+            node.AddNeighbor(_nodes[x - 1, z]);
+        }
+        else if (x == 0 && z == (SizeZ - 1))
+        {
+            //TL corner
+            node.AddNeighbor(_nodes[x, z - 1]);
+        }
     }
+
+    //private List<MapNode> GetNeighbors(MapNode node)
+    //{
+    //    List<MapNode> neighbors = new List<MapNode>();
+
+    //    for (int i = -1; i <= 1; i++)
+    //    {
+    //        for (int j = -1; j <= 1; j++)
+    //        {
+    //            if (i == 0 && j == 0)
+    //            {
+    //                //it's the current tile -> skip
+    //                continue;
+    //            }
+
+    //            if (Mathf.Abs(i) == Mathf.Abs(j))
+    //            {
+    //                //we are going in diagonal -> skip
+    //                continue;
+    //            }
+
+    //            int xIndex = node.ZIndex + j;
+    //            int zIndex = node.XIndex + i;
+
+    //            if (xIndex < 0 || xIndex >= SizeX || zIndex < 0 || zIndex >= SizeZ)
+    //                continue;
+
+    //            MapNode neighbor = _nodes[xIndex, zIndex];
+    //            if (neighbor == null)
+    //            {
+    //                //null -> skip
+    //                continue;
+    //            }
+    //            //if (neighbor.HasObstacle)
+    //            //{
+    //            //    //skip the neigbor with obstacle (in case we are loading the map)
+    //            //    continue;
+    //            //}
+
+    //            neighbors.Add(neighbor);
+    //        }
+    //    }
+
+    //    return neighbors;
+    //}
 
     private void PlaceObstacles()
     {
@@ -132,9 +191,9 @@ public class Map
 
         List<List<Tuple<int, int>>> possiblePlacements = new List<List<Tuple<int, int>>>();
 
-        for (int x = 0; x < SizeX - obstacleSizeZ + 1; x++)
+        for (int z = 0; z < SizeZ - obstacleSizeX + 1; z++)
         {
-            for (int z = 0; z < SizeZ - obstacleSizeX + 1; z++)
+            for (int x = 0; x < SizeX - obstacleSizeZ + 1; x++)
             {
                 bool fits = true;
                 List<Tuple<int, int>> coords = new List<Tuple<int, int>>();
@@ -152,12 +211,14 @@ public class Map
 
                         int obstacleX = x + i;
                         int obstacleZ = z + j;
+                        
                         if (_nodes[obstacleX, obstacleZ].HasObstacle)
                         {
                             //placement is invalid, because one of the required tiles is already occupied
                             fits = false;
                             continue;
                         }
+                        
                         coords.Add(new Tuple<int, int>(obstacleX, obstacleZ));
                     }
                 }
@@ -182,7 +243,7 @@ public class Map
         {
             int tileX = coords[i].Item1;
             int tileZ = coords[i].Item2;
-
+            
             MapNode node = _nodes[tileX, tileZ];
             node.HasObstacle = true;
 

@@ -2,15 +2,22 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using UnityEngine;
-using Random = UnityEngine.Random;
+using UnityEngine.Assertions.Must;
 
 public class TileMap : MonoBehaviour
 {
+    private enum TileDebugStyle
+    {
+        None,
+        Coords,
+        Weight,
+        Cost
+    }
+
     [Header("Prefabs")]
     [SerializeField]
-    private TileChunk _tileChunkPrefab = null;
+    private MapChunk _mapChunkPrefab = null;
 
     [Header("Map Settings")]
     [SerializeField]
@@ -19,6 +26,12 @@ public class TileMap : MonoBehaviour
     private int _sizeZ = 10;
     [SerializeField]
     private int _numObstacles = 4;
+    [SerializeField]
+    private bool _isWeighted = false;
+    [SerializeField]
+    private bool _drawDebug = false;
+    [SerializeField]
+    private TileDebugStyle _tileDebugStyle = TileDebugStyle.None;
 
     [Header("Other")]
     [SerializeField]
@@ -27,21 +40,18 @@ public class TileMap : MonoBehaviour
     private int _tilesPerChunkX = 10, _tilesPerChunkZ = 10;
     private int _numChunksX, _numChunksZ;
 
-    //private ListPool<Tile> _tilesPool = new ListPool<Tile>();
+    private TileDebugStyle _chosenDebugStyle = TileDebugStyle.None;
+
     private Tile[,] _tiles;
     private List<Tile> _allTiles = new List<Tile>();
 
-    //private ListPool<Obstacle> _obstaclesPool = new ListPool<Obstacle>();
-    //private List<Obstacle> _obstacles = new List<Obstacle>();
-
-    private ListPool<TileChunk> _chunksPool = new ListPool<TileChunk>();
-    private List<TileChunk> _tileChunks = new List<TileChunk>();
+    private ListPool<MapChunk> _chunksPool = new ListPool<MapChunk>();
+    private List<MapChunk> _mapChunks = new List<MapChunk>();
 
     //TODO: try to get rid of
     private Dictionary<MapNode, Tile> _nodeToTile = new Dictionary<MapNode, Tile>();
 
     private Map _map;
-    //private Color[] _colors;
 
     private string _saveFilePath;
 
@@ -65,6 +75,10 @@ public class TileMap : MonoBehaviour
             _map = new Map(reader);
         }
 
+        _sizeX = _map.SizeX;
+        _sizeZ = _map.SizeZ;
+
+        ClearMap();
         GenerateTileMap(_map);
     }
 
@@ -84,25 +98,17 @@ public class TileMap : MonoBehaviour
         //_tileSelector.StartTile = _emptyTiles[Random.Range(0, _emptyTiles.Count)];
     }
 
-    public void GenerateMap()
+    public void GenerateMap(bool useSettings = true)
     {
-        //reset coroutines to make sure a path is not being search for when we re-generate a map
-        StopAllCoroutines();
-        _tileSelector.Reset();
+        ClearMap();
 
-        for (int i = 0; i < _tileChunks.Count; i++)
+        if (useSettings)
         {
-            _chunksPool.Add(_tileChunks[i]);
+            _sizeX = _sizeZ = Settings.MapSize;
+            _numObstacles = Settings.NumObstacles;
         }
-        _tileChunks.Clear();
 
-        _allTiles.Clear();
-        _nodeToTile.Clear();
-
-        _sizeX = _sizeZ = Settings.MapSize;
-        _numObstacles = Settings.NumObstacles;
-
-        _map = new Map(_sizeX, _sizeZ, _numObstacles);
+        _map = new Map(_sizeX, _sizeZ, _numObstacles, _isWeighted);
         GenerateTileMap(_map);
     }
 
@@ -122,35 +128,47 @@ public class TileMap : MonoBehaviour
         MapNode start = _tileSelector.StartTile.Node;
         MapNode end = _tileSelector.EndTile.Node;
 
-        for (int i = 0; i < _allTiles.Count; i++)
-        {
-            _allTiles[i].Node.Distance = int.MaxValue;
-        }
-
         IPathfinder algo = PathfindersFactory.GetPathfinderForType(Settings.Pathfinder);
-        IEnumerator algoCoroutine = algo.FindPath(
+        yield return algo.FindPath(
             start, 
             end,
-            _map.AsArray.Where(x => !x.HasObstacle).ToArray(), 
             Settings.AnimateSearch, 
             (node) => 
             { 
-                _nodeToTile[node].SetColor(Color.green);
+                if(!node.HasObstacle)
+                    _nodeToTile[node].SetColor(Color.green);
             },
             (node) =>
             {
-                _nodeToTile[node].SetColor(Color.gray);
+                if (!node.HasObstacle)
+                    _nodeToTile[node].SetColor(Color.gray);
             }
         );
-        yield return algoCoroutine;
-        List<MapNode> path = algoCoroutine.Current as List<MapNode>;
+        
+        List<MapNode> path = new List<MapNode>();
+
+        MapNode current = end.CameFrom;
+        while(current != null)
+        {
+            if (current.CameFrom == null && current != start)
+            {
+                path = null;
+                break;
+            }
+            if(current != start)
+                path.Add(current);
+            current = current.CameFrom;
+        }
 
         if (path != null && path.Count > 0)
         {
-            for (int i = 0; i < path.Count; i++)
+            for (int i = path.Count - 1; i >= 0; i--)
             {
-                _nodeToTile[path[i]].SetColor(Color.white);
-                yield return new WaitForSeconds(0.1f);
+                if (!path[i].HasObstacle)
+                {
+                    _nodeToTile[path[i]].SetColor(Color.white);
+                    yield return new WaitForSeconds(0.05f);
+                }
             }
         }
         else
@@ -173,35 +191,65 @@ public class TileMap : MonoBehaviour
         }
     }
 
+    private void ClearMap()
+    {
+        //reset coroutines to make sure a path is not being search for when we re-generate a map
+        StopAllCoroutines();
+        _tileSelector.Reset();
+
+        for (int i = 0; i < _mapChunks.Count; i++)
+        {
+            _chunksPool.Add(_mapChunks[i]);
+        }
+        _mapChunks.Clear();
+
+        _allTiles.Clear();
+        _nodeToTile.Clear();
+    }
 
     private void GenerateTileMap(Map map)
     {
         _tiles = new Tile[_sizeX, _sizeZ];
 
-        _numChunksX = map.SizeX / _tilesPerChunkX;
-        _numChunksZ = map.SizeZ / _tilesPerChunkZ;
+        _numChunksX = Mathf.CeilToInt(map.SizeX / (float)_tilesPerChunkX);
+        _numChunksZ = Mathf.CeilToInt(map.SizeZ / (float)_tilesPerChunkZ);
 
-        CreateTileChunks();
+        CreateMapChunks();
     }
 
-    private void CreateTileChunks()
+    private void CreateMapChunks()
     {
+        int prevChunkX = 0, prevChunkZ = 0;
         for (int x = 0; x < _numChunksX; x++)
         {
             for (int z = 0; z < _numChunksZ; z++)
             {
-                TileChunk chunk = _chunksPool.Get();
+                MapChunk chunk = _chunksPool.Get();
                 if (chunk == null)
                 {
-                    chunk = Instantiate(_tileChunkPrefab);
+                    chunk = Instantiate(_mapChunkPrefab);
                 }
                 chunk.transform.SetParent(transform);
 
-                int numTilesXInChunk = 10;
-                int numTilesZInChunk = 10;
-                chunk.GenerateTiles(numTilesXInChunk, numTilesZInChunk, x, z, _map, _allTiles, _tiles, _nodeToTile);
+                int numTilesXInChunk = Mathf.Min(_map.SizeX, _tilesPerChunkX);
+                int undividedTilesX = (x + 1) * _tilesPerChunkX;
+                if (undividedTilesX > _map.SizeX)
+                    numTilesXInChunk = _map.SizeX % _tilesPerChunkX;
 
-                _tileChunks.Add(chunk);
+                int numTilesZInChunk = Mathf.Min(_map.SizeZ, _tilesPerChunkZ);
+                int undividedTilesZ = (z + 1) * _tilesPerChunkZ;
+                if (undividedTilesZ > _map.SizeZ)
+                    numTilesZInChunk = _map.SizeZ % _tilesPerChunkZ;
+
+                chunk.GenerateMapChunk(numTilesXInChunk, numTilesZInChunk, x, z, prevChunkX, prevChunkZ, _map, _allTiles, _tiles, _nodeToTile);
+
+                _mapChunks.Add(chunk);
+
+                if (x == z)
+                {
+                    prevChunkX = numTilesXInChunk;
+                    prevChunkZ = numTilesZInChunk;
+                }
             }
         }
     }
@@ -226,5 +274,72 @@ public class TileMap : MonoBehaviour
         //stop pathfinding
         StopAllCoroutines();
         ResetHighlights();
+    }
+
+    private void OnDrawGizmos()
+    {
+        if (_drawDebug)
+        {
+            if (_tiles != null)
+            {
+                for (int z = 0; z < _sizeZ; z++)
+                {
+                    for (int x = 0; x < _sizeX; x++)
+                    {
+                        Tile tile = _tiles[x, z];
+                        if (tile != null)
+                        {
+                            foreach (var n in tile.Node.ConnectedNeighbors)
+                            {
+                                Tile neighbor = _nodeToTile[n];
+
+                                Vector3 start = new Vector3(tile.Node.XIndex, 0.1f, tile.Node.ZIndex);
+                                Vector3 end = new Vector3(neighbor.Node.XIndex, 0.1f, neighbor.Node.ZIndex);
+                                Vector3 dir = (end - start).normalized;
+
+                                Debug.DrawLine(
+                                    start + dir * 0.3f,
+                                    end - dir * 0.3f,
+                                    Color.red
+                                    );
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        //if(_tileDebugStyle != _chosenDebugStyle)
+        //{
+            //_chosenDebugStyle = _tileDebugStyle;
+
+            switch (_tileDebugStyle)
+            {
+                default:
+                    for (int i = 0; i < _allTiles.Count; i++)
+                    {
+                        _allTiles[i].HideLabel();
+                    }
+                    break;
+                case TileDebugStyle.Coords:
+                    for (int i = 0; i < _allTiles.Count; i++)
+                    {
+                        _allTiles[i].ShowCoordinates();
+                    }
+                    break;
+                case TileDebugStyle.Weight:
+                    for (int i = 0; i < _allTiles.Count; i++)
+                    {
+                        _allTiles[i].ShowWeight();
+                    }
+                    break;
+                case TileDebugStyle.Cost:
+                    for (int i = 0; i < _allTiles.Count; i++)
+                    {
+                        _allTiles[i].ShowCost();
+                    }
+                    break;
+            }
+        //}
     }
 }

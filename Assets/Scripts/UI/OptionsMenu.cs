@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Linq;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -33,6 +34,7 @@ public class OptionsMenu : MonoBehaviour
 
         FillAlgorithmsDropdown();
 
+        _algorithmsDropdown.value = Array.IndexOf(_availableAlgorithms, Settings.Pathfinder);
         _algorithmsDropdown.onValueChanged.RemoveAllListeners();
         _algorithmsDropdown.onValueChanged.AddListener(OnAlgorithmSelected);
         if (_availableAlgorithms != null && _availableAlgorithms.Length > 0)
@@ -40,9 +42,9 @@ public class OptionsMenu : MonoBehaviour
             Settings.SetPathfinder(_availableAlgorithms[0], false);
         }
 
+        _animateSearchToggle.isOn = Settings.AnimateSearch;
         _animateSearchToggle.onValueChanged.RemoveAllListeners();
         _animateSearchToggle.onValueChanged.AddListener(OnAnimateSearchValueChanged);
-        Settings.SetAnimateSearch(_animateSearchToggle.isOn, false);
 
         //TODO: use as an example for how to set up the other fields
         _cameraOrthographicToggle.isOn = Settings.IsCameraOrthographic;

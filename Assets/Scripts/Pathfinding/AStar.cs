@@ -6,57 +6,50 @@ using UnityEngine;
 
 public class AStar : IPathfinder
 {
-    public IEnumerator FindPath(MapNode start, MapNode end, IList<MapNode> validNodes, bool animateSearch = false, Action<MapNode> processingAction = null, Action<MapNode> processedAction = null)
+    public IEnumerator FindPath(MapNode start, MapNode end, bool animateSearch = false, Action<MapNode> processingAction = null, Action<MapNode> processedAction = null)
     {
         PriorityQueue<MapNode> unexplored = new PriorityQueue<MapNode>();
+        HashSet<MapNode> explored = new HashSet<MapNode>();
 
-        //initialization
-        for (int i = 0; i < validNodes.Count; i++)
-        {
-            MapNode tile = validNodes[i];
-            tile.Path = new List<MapNode>();
-            tile.Distance = int.MaxValue;
-            unexplored.Enqueue(tile, tile.Distance);
-        }
-
-        unexplored.ChangePriority(start, int.MaxValue, 0);
-        start.Distance = 0;
+        start.CameFrom = null;
+        start.Cost = 0;
+        unexplored.Enqueue(start, start.Cost);
 
         //processing
         while (unexplored.Count > 0)
         {
             MapNode current = unexplored.Dequeue();
+            explored.Add(current);
 
             if (current == end)
             {
                 //finished
-                yield return current.Path;
                 yield break;
             }
 
             for (int i = 0; i < current.ConnectedNeighbors.Count; i++)
             {
                 MapNode neighbor = current.ConnectedNeighbors[i];
+                if (explored.Contains(neighbor))
+                    continue;
 
-                int cameFromDistance = Mathf.Min(current.Distance, int.MaxValue - 1);
-                int nextPathDistance = 1;
-                int distanceScore = cameFromDistance + nextPathDistance;
-                int distanceScoreWithHeuristic = distanceScore + GetHeuristicEuclidean(current, neighbor);
+                //distance from starting node
+                int gCost = neighbor.Weight * 5 + GetHeuristicEuclidean(current, start);
+                //heuristic (distance to the end node)
+                int hCost = GetHeuristicEuclidean(current, end);
+                int fCost = gCost + hCost;
 
-                if (distanceScoreWithHeuristic < neighbor.Distance)
+                if (fCost < neighbor.Cost || !unexplored.Contains(neighbor))
                 {
                     if (animateSearch && neighbor != start && neighbor != end)
                     {
                         processingAction?.Invoke(neighbor);
-                        yield return new WaitForSeconds(0.05f);
+                        yield return new WaitForSeconds(0.01f);
                     }
 
-                    unexplored.ChangePriority(neighbor, neighbor.Distance, distanceScoreWithHeuristic);
-
-                    neighbor.Distance = distanceScoreWithHeuristic;
-                    neighbor.Path = new List<MapNode>(current.Path);
-                    if (current != start)
-                        neighbor.Path.Add(current);
+                    neighbor.Cost = fCost;
+                    neighbor.CameFrom = current;
+                    unexplored.Enqueue(neighbor, neighbor.Cost);
                 }
             }
 
@@ -78,7 +71,6 @@ public class AStar : IPathfinder
     {
         float xDist = a.XIndex - b.XIndex;
         float zDist = a.ZIndex - b.ZIndex;
-        //ceiling here might not be giving an accurate result!
-        return Mathf.CeilToInt(Mathf.Sqrt(xDist * xDist + zDist * zDist));
+        return (int)(Mathf.Sqrt(xDist * xDist + zDist * zDist) * 10);
     }
 }

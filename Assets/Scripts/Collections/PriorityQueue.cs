@@ -48,25 +48,14 @@ namespace Custom.Collections.Generic
             return null;
         }
 
-        public void ChangePriority(T obj, int oldPriority, int newPriority)
+        public bool Contains(T obj)
         {
-            if(newPriority == oldPriority)
+            foreach (var kvp in _items)
             {
-                //nothing to be done, it's already as it should be
-                return;
+                if (kvp.Value.Contains(obj))
+                    return true;
             }
-
-            HashSet<T> objs = _items[oldPriority];
-            if (objs.Contains(obj))
-            {
-                objs.Remove(obj);
-                if(objs.Count == 0)
-                {
-                    _items.Remove(oldPriority);
-                }
-
-                Enqueue(obj, newPriority);
-            }
+            return false;
         }
 
         public void Clear()
@@ -78,7 +67,8 @@ namespace Custom.Collections.Generic
 
         private void UpdateMin()
         {
-            _minPriority = _items.Keys.Min();
+            if(_items.Count > 0)
+                _minPriority = _items.Keys.Min();
         }
     }
 }
