@@ -366,8 +366,8 @@ public class TileMap : MonoBehaviour
                             {
                                 Tile neighbor = _nodeToTile[n];
 
-                                Vector3 start = new Vector3(tile.Node.XIndex, 0.1f, tile.Node.ZIndex);
-                                Vector3 end = new Vector3(neighbor.Node.XIndex, 0.1f, neighbor.Node.ZIndex);
+                                Vector3 start = new Vector3(tile.Node.X, 0.1f, tile.Node.Z);
+                                Vector3 end = new Vector3(neighbor.Node.X, 0.1f, neighbor.Node.Z);
                                 Vector3 dir = (end - start).normalized;
 
                                 Debug.DrawLine(

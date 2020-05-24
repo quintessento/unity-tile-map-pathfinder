@@ -48,6 +48,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   _labelPrefab: {fileID: 1619802576684640125, guid: b87130cb972258e4486872f02a18ca93,
     type: 3}
+  _tileColor1: {r: 0.87843144, g: 0.86666673, b: 0.5647059, a: 1}
+  _tileColor2: {r: 0.9433962, g: 0.93926036, b: 0.5918476, a: 1}
+  _randomizeColor: 0
 --- !u!33 &1553155181467225741
 MeshFilter:
   m_ObjectHideFlags: 0

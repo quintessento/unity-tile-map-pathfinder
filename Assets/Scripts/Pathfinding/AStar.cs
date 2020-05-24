@@ -68,11 +68,6 @@ public class AStar : IPathfinder
         yield return null;
     }
 
-    //private int DistanceToStart(MapNode node)
-    //{
-    //    return (int)GetManhattanDistance(node, _start);
-    //}
-
     private int DistanceToEnd(MapNode node)
     {
         return (int)(GetManhattanDistance(node, _end));
@@ -83,25 +78,15 @@ public class AStar : IPathfinder
         return neighbor.Weight;
     }
 
-    //private int GetWeightedDistance(MapNode a, MapNode b)
-    //{
-    //    return (int)(GetManhattanDistance(a, b));
-    //}
-
-    //private int GetHeuristic(MapNode a, MapNode b)
-    //{
-    //    return (int)(GetManhattanDistance(a, b));
-    //}
-
     private float GetManhattanDistance(MapNode a, MapNode b)
     {
-        return Mathf.Abs(a.XIndex - b.XIndex) + Mathf.Abs(a.ZIndex - b.ZIndex);
+        return Mathf.Abs(a.X - b.X) + Mathf.Abs(a.Z - b.Z);
     }
 
     private float GetEuclideanDistance(MapNode a, MapNode b)
     {
-        float xDist = a.XIndex - b.XIndex;
-        float zDist = a.ZIndex - b.ZIndex;
+        float xDist = a.X - b.X;
+        float zDist = a.Z - b.Z;
         return Mathf.Sqrt(xDist * xDist + zDist * zDist);
     }
 }

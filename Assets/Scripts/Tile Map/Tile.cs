@@ -1,29 +1,41 @@
 ﻿using UnityEngine;
 using UnityEngine.UI;
 
+/// <summary>
+/// Visual representation of a Map Node.
+/// </summary>
 public class Tile
 {
     public MapNode Node { get; private set; }
 
     private Color _originalColor;
 
-    private MeshFilter _meshFilter;
-    private int _i1, _i2, _i3, _i4, _i5, _i6;
+    private readonly MeshFilter _meshFilter;
+    private readonly int[] _indices;
 
-    private Text _label = null;
+    private readonly Text _label = null;
 
-    public Tile(MapNode node, MeshFilter meshFilter, int i1, int i2, int i3, int i4, int i5, int i6, Color color, Text label)
+    /// <summary>
+    /// Creates a tile based on a node.
+    /// </summary>
+    /// <param name="node">The model of the tile.</param>
+    /// <param name="meshFilter">Parent mesh's filter.</param>
+    /// <param name="color">Initial color.</param>
+    /// <param name="label">Label object.</param>
+    /// <param name="indices">Set of vertex indices for vertices on the mesh.</param>
+    public Tile(MapNode node, MeshFilter meshFilter, Color color, Text label, params int[] indices)
     {
         Node = node;
         _meshFilter = meshFilter;
-        _i1 = i1;
-        _i2 = i2;
-        _i3 = i3;
-        _i4 = i4;
-        _i5 = i5;
-        _i6 = i6;
+
         _originalColor = color;
         _label = label;
+
+        _indices = new int[indices.Length];
+        for (int i = 0; i < indices.Length; i++)
+        {
+            _indices[i] = indices[i];
+        }
 
         switch (Settings.TileDebugStyle)
         {
@@ -45,23 +57,27 @@ public class Tile
     public void SetColor(Color color)
     {
         Color[] colors = _meshFilter.mesh.colors;
-        colors[_i1] = colors[_i2] = colors[_i3] =
-            colors[_i4] = colors[_i5] = colors[_i6] = color;
+        for (int i = 0; i < _indices.Length; i++)
+        {
+            colors[_indices[i]] = color;
+        }
         _meshFilter.mesh.colors = colors;
     }
 
     public void ResetColor()
     {
         Color[] colors = _meshFilter.mesh.colors;
-        colors[_i1] = colors[_i2] = colors[_i3] =
-            colors[_i4] = colors[_i5] = colors[_i6] = _originalColor;
+        for (int i = 0; i < _indices.Length; i++)
+        {
+            colors[_indices[i]] = _originalColor;
+        }
         _meshFilter.mesh.colors = colors;
     }
 
     public void ShowCoordinates()
     {
         _label.gameObject.SetActive(true);
-        _label.text = string.Format("({0}, {1})", Node.XIndex, Node.ZIndex);
+        _label.text = string.Format("({0}, {1})", Node.X, Node.Z);
         _label.resizeTextMaxSize = _label.fontSize = 20;
     }
 

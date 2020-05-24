@@ -1,26 +1,38 @@
 ﻿using System.Collections.Generic;
 using System.IO;
 
+/// <summary>
+/// Map node represents a cell of the map. Pathfinding can use nodes to find paths.
+/// </summary>
 public class MapNode
 {
-    public int XIndex { get; private set; }
-    public int ZIndex { get; private set; }
+    public int X { get; private set; }
+    public int Z { get; private set; }
 
 	public List<MapNode> ConnectedNeighbors;
 
 	public bool HasObstacle { get; set; }
 
-	//pathfinding
-	public int Weight { get; set; }
+    #region Pathfinding
+	/// <summary>
+	/// Difficulty of reaching or traversing the node. If the map/graph is unweighted, weight is always 1.
+	/// Otherwise, weight effectively represents distance to this node from its immediate neighbor.
+	/// </summary>
+    public int Weight { get; set; }
+	/// <summary>
+	/// Used to calculate the score of pathfinding navigation.
+	/// </summary>
 	public int Cost { get; set; }
+	/// <summary>
+	/// Link to the previous node in the path formed by a pathfinder algorithm.
+	/// </summary>
 	public MapNode CameFrom { get; set; }
+    #endregion
 
-	//-----------
-
-	public MapNode(int x, int z, int weight)
+    public MapNode(int x, int z, int weight)
 	{
-		XIndex = x;
-		ZIndex = z;
+		X = x;
+		Z = z;
 		Weight = weight;
 
 		ConnectedNeighbors = new List<MapNode>();
@@ -28,8 +40,8 @@ public class MapNode
 
 	public MapNode(BinaryReader reader)
 	{
-		XIndex = reader.ReadInt32();
-		ZIndex = reader.ReadInt32();
+		X = reader.ReadInt32();
+		Z = reader.ReadInt32();
 		HasObstacle = reader.ReadBoolean();
 		Weight = reader.ReadInt32();
 
@@ -63,8 +75,8 @@ public class MapNode
 
 	public void Save(BinaryWriter writer)
 	{
-		writer.Write(XIndex);
-		writer.Write(ZIndex);
+		writer.Write(X);
+		writer.Write(Z);
 		writer.Write(HasObstacle);
 		writer.Write(Weight);
 	}

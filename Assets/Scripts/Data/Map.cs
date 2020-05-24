@@ -3,15 +3,25 @@ using System.Collections.Generic;
 using System.IO;
 using Random = UnityEngine.Random;
 
+/// <summary>
+/// Representation of the world made with nodes which can later be translated into tiles.
+/// </summary>
 public class Map
 {
+    /// <summary>
+    /// Number of nodes along the X axis.
+    /// </summary>
     public int SizeX { get; private set; }
+
+    /// <summary>
+    /// Number of nodes along the Z axis.
+    /// </summary>
     public int SizeZ { get; private set; }
 
-    private MapNode[,] _nodes;
+    private readonly MapNode[,] _nodes;
 
     //used to get an unoccupied node after the map has been generated
-    private List<MapNode> _emptyNodes;
+    private readonly List<MapNode> _emptyNodes;
 
     public Map(int sizeX, int sizeZ, int numObstacles, bool weighted = false)
 	{
@@ -102,6 +112,8 @@ public class Map
         }
     }
 
+    //registers neigbors with nodes during construction of the map
+    //should be called in the constructor or a loader, where the nodes array is filled
     private void AssignNeighbors(MapNode node, int x, int z)
     {
         if (x > 0 && x < (SizeX - 1) && z > 0 && z < (SizeZ - 1))
@@ -209,6 +221,7 @@ public class Map
         }
     }
 
+    //places obstacles at nodes with provided coordinates
     private void PlaceObstacle(List<Tuple<int, int>> coords)
     {
         for (int i = 0; i < coords.Count; i++)

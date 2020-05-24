@@ -1,18 +1,39 @@
 ﻿using System;
 using UnityEngine;
 
-public class Settings
+/// <summary>
+/// Shared collection of user settings that can be persisted via PlayerPrefs or otherwise stored.
+/// </summary>
+public static class Settings
 {
+    /// <summary>
+    /// Size of a square map, where x = MapSize and z = MapSize.
+    /// </summary>
     public static int MapSize { get; private set; }
     public static int NumObstacles { get; private set; }
+    /// <summary>
+    /// Are the nodes/tiles weighted?
+    /// </summary>
     public static bool IsWeighted { get; private set; }
+
+    /// <summary>
+    /// Indicates whether tiles show labels with some useful information.
+    /// </summary>
     public static TileDebugStyle TileDebugStyle { get; private set; }
 
+    /// <summary>
+    /// Selected pathfidning algorithm.
+    /// </summary>
     public static Type Pathfinder { get; private set; }
 
+    /// <summary>
+    /// Will the pathfinding algorithm show its progress before showing the optimal path it had found.
+    /// </summary>
     public static bool AnimateSearch { get; private set; }
 
     public static bool IsCameraOrthographic { get; private set; }
+
+    #region Setters
 
     public static void SetMapSize(int size, bool notifyChange)
     {
@@ -90,6 +111,11 @@ public class Settings
         }
     }
 
+    #endregion
+
+    /// <summary>
+    /// Fired when any of the settings have changed.
+    /// </summary>
     public static event EventHandler SettingsChanged;
 
     private const string key_mapSize = "key_map_size";

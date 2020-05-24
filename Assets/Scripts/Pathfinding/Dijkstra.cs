@@ -77,7 +77,7 @@ public class Dijkstra : IPathfinder
 
     private float GetManhattanDistance(MapNode a, MapNode b)
     {
-        return Mathf.Abs(a.XIndex - b.XIndex) + Mathf.Abs(a.ZIndex - b.ZIndex);
+        return Mathf.Abs(a.X - b.X) + Mathf.Abs(a.Z - b.Z);
     }
 
     //private float GetEuclideanDistance(MapNode a, MapNode b)

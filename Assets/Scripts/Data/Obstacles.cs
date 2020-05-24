@@ -1,5 +1,8 @@
 ﻿using UnityEngine;
 
+/// <summary>
+/// Collection of obstacles defined as 2D arrays of 1s and 0s, where 0 stands for empty and 1 for obstacle piece on a tile.
+/// </summary>
 public class Obstacles
 {
     public static int[,] obstacle1x1 = new int[,]
@@ -21,6 +24,7 @@ public class Obstacles
        { 1, 1 }
     };
 
+    //for testing
     public static int[,] obstacleL1 = new int[,]
     {
        { 1, 0 },
@@ -28,13 +32,16 @@ public class Obstacles
        { 1, 1 }
     };
 
+    //for testing
     public static int[,] obstacleL2 = new int[,]
     {
        { 0, 0, 1 },
        { 1, 1, 1 }
     };
 
-
+    /// <summary>
+    /// Returns a random obstacle with equal probability. Available obstacles are 1x1, 1x2, 2x1, 2x2.
+    /// </summary>
     public static int[,] RandomDeclared
     {
         get

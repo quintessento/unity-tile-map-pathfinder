@@ -6,7 +6,14 @@ public class MapChunk : MonoBehaviour
     private TilesChunk _tilesChunk;
     private ObstaclesChunk _obstaclesChunk;
 
-    public void GenerateMapChunk(int numTilesXInChunk, int numTilesZInChunk, int chunkX, int chunkZ, int prevChunkTilesX, int prevChunkTilesZ, Map map, List<Tile> allTiles, Tile[,] tiles, Dictionary<MapNode, Tile> nodeToTile)
+    public void GenerateMapChunk(
+        int numTilesXInChunk, int numTilesZInChunk, 
+        int chunkX, int chunkZ, 
+        int prevChunkTilesX, int prevChunkTilesZ, 
+        Map map, 
+        List<Tile> allTiles, 
+        Tile[,] tiles, 
+        Dictionary<MapNode, Tile> nodeToTile)
     {
         if (_tilesChunk == null)
         {

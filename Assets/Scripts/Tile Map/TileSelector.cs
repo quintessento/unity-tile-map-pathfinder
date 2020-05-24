@@ -1,19 +1,11 @@
-﻿using System;
-using UnityEngine;
+﻿using UnityEngine;
 using UnityEngine.EventSystems;
 
+/// <summary>
+/// Processes clicks on tiles.
+/// </summary>
 public class TileSelector : MonoBehaviour
 {
-
-    //public event EventHandler StartTileSelected;
-    //public event EventHandler EndTileSelected;
-
-    //public void Reset()
-    //{
-    //    StartTile = null;
-    //    EndTile = null;
-    //}
-
     private bool _isSettingStartTile = true;
 
     private TileMap _tileMap;
@@ -33,7 +25,7 @@ public class TileSelector : MonoBehaviour
             if(Physics.Raycast(ray, out hit, Mathf.Infinity))
             {
                 Vector3 hitPosition = transform.InverseTransformPoint(hit.point);
-                Tile tile = GetComponent<TileMap>().GetTile(hitPosition.x, hitPosition.z);
+                Tile tile = _tileMap.GetTile(hitPosition.x, hitPosition.z);
 
                 if (tile != null && !tile.Node.HasObstacle && tile != _tileMap.StartTile && tile != _tileMap.StartTile)
                 {

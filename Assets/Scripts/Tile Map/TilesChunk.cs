@@ -8,6 +8,13 @@ public class TilesChunk : MonoBehaviour
     [SerializeField]
     private Canvas _labelPrefab = null;
 
+    [SerializeField]
+    private Color _tileColor1 = Color.white;
+    [SerializeField]
+    private Color _tileColor2 = Color.gray;
+    [SerializeField]
+    private bool _randomizeColor = false;
+
     private Mesh _mesh;
     private MeshFilter _meshFilter;
     private MeshCollider _meshCollider;
@@ -18,6 +25,8 @@ public class TilesChunk : MonoBehaviour
 
     private List<GameObject> _labels = new List<GameObject>();
 
+    //private bool _usingColor1;
+
     public void AddTile(int tileX, int tileZ, Map map, List<Tile> allTiles, Tile[,] tiles, Dictionary<MapNode, Tile> nodeToTile)
     {
         float squareSize = 1f;
@@ -25,11 +34,21 @@ public class TilesChunk : MonoBehaviour
 
         MapNode node = map[tileX, tileZ];
 
-        Color tileColor = Random.ColorHSV(
-            hueMin: 0.19f, hueMax: 0.2f,
-            saturationMin: 0.5f, saturationMax: 0.6f,
-            valueMin: 0.7f, valueMax: 0.8f
-        );
+        Color tileColor;
+        if (_randomizeColor)
+        {
+            tileColor = Random.ColorHSV(
+                hueMin: 0.19f, hueMax: 0.2f,
+                saturationMin: 0.5f, saturationMax: 0.6f,
+                valueMin: 0.7f, valueMax: 0.8f
+            );
+        }
+        else
+        {
+            //creates a checkered pattern using the two provided colors
+            tileColor = ((tileX + tileZ) % 2 == 1) ? _tileColor1 : _tileColor2;
+        }
+
         if (node.Weight > 1)
         {
             Color washedOutRed = tileColor + Color.red * 0.5f;
@@ -101,7 +120,7 @@ public class TilesChunk : MonoBehaviour
         _colors.Add(color);
         _colors.Add(color);
 
-        return new Tile(node, _meshFilter, i1, i2, i3, i4, i5, i6, color, label);
+        return new Tile(node, _meshFilter, color, label, i1, i2, i3, i4, i5, i6);
     }
 
     private void Awake()

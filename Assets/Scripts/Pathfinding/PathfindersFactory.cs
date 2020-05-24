@@ -1,6 +1,10 @@
 ﻿using System;
 using System.Linq;
 
+/// <summary>
+/// Gives access to existing pathfinding algorithms. Any of the IPathfinder implementers in the project will be picked up using reflection and
+/// made available in the runtime interface.
+/// </summary>
 public static class PathfindersFactory
 {
     public static Type[] GetAvailablePathfinderTypes()

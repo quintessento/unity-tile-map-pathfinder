@@ -1,5 +1,8 @@
 ﻿using UnityEngine;
 
+/// <summary>
+/// Simple free look camera with an alternative orthographic mode.
+/// </summary>
 public class CameraController : MonoBehaviour
 {
     public static Camera Main { get; private set; }
