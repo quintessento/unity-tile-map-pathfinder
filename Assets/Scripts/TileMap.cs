@@ -3,18 +3,9 @@ using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using UnityEngine;
-using UnityEngine.Assertions.Must;
 
 public class TileMap : MonoBehaviour
 {
-    private enum TileDebugStyle
-    {
-        None,
-        Coords,
-        Weight,
-        Cost
-    }
-
     [Header("Prefabs")]
     [SerializeField]
     private MapChunk _mapChunkPrefab = null;
@@ -33,14 +24,8 @@ public class TileMap : MonoBehaviour
     [SerializeField]
     private TileDebugStyle _tileDebugStyle = TileDebugStyle.None;
 
-    [Header("Other")]
-    [SerializeField]
-    private TileSelector _tileSelector = null;
-
     private int _tilesPerChunkX = 10, _tilesPerChunkZ = 10;
     private int _numChunksX, _numChunksZ;
-
-    private TileDebugStyle _chosenDebugStyle = TileDebugStyle.None;
 
     private Tile[,] _tiles;
     private List<Tile> _allTiles = new List<Tile>();
@@ -48,23 +33,58 @@ public class TileMap : MonoBehaviour
     private ListPool<MapChunk> _chunksPool = new ListPool<MapChunk>();
     private List<MapChunk> _mapChunks = new List<MapChunk>();
 
-    //TODO: try to get rid of
+    private Tile _startTile, _endTile;
+
     private Dictionary<MapNode, Tile> _nodeToTile = new Dictionary<MapNode, Tile>();
 
     private Map _map;
 
     private string _saveFilePath;
 
-    private void Awake()
+    public Tile StartTile
     {
-        _saveFilePath = Path.Combine(Application.dataPath, "save.sav");
+        get => _startTile;
+        set
+        {
+            _startTile = value;
+
+            if (value != null)
+            {
+                value.SetColor(Color.blue);
+            }
+
+            StopAllCoroutines();
+            ResetHighlights();
+        }
+    }
+
+    public Tile EndTile
+    {
+        get => _endTile;
+        set
+        {
+            _endTile = value;
+
+            if (value != null)
+            {
+                value.SetColor(Color.red);
+            }
+
+            StopAllCoroutines();
+            ResetHighlights();
+        }
     }
 
     public void Save()
     {
-        using (BinaryWriter writer = new BinaryWriter(File.Open(_saveFilePath, FileMode.Create))) 
+        if (_map != null)
         {
-            _map.Save(writer);
+            using (BinaryWriter writer = new BinaryWriter(File.Open(_saveFilePath, FileMode.Create)))
+            {
+                writer.Write(Settings.NumObstacles);
+                _map.Save(writer);
+                MessagePanel.ShowMessage("Saved map to " + _saveFilePath);
+            }
         }
     }
 
@@ -72,14 +92,17 @@ public class TileMap : MonoBehaviour
     {
         using (BinaryReader reader = new BinaryReader(File.Open(_saveFilePath, FileMode.Open))) 
         {
+            _numObstacles = reader.ReadInt32();
             _map = new Map(reader);
+
+            ClearMap();
+
+            _sizeX = _map.SizeX;
+            _sizeZ = _map.SizeZ;
+            _numObstacles = Settings.NumObstacles;
+
+            GenerateTileMap(_map);
         }
-
-        _sizeX = _map.SizeX;
-        _sizeZ = _map.SizeZ;
-
-        ClearMap();
-        GenerateTileMap(_map);
     }
 
     public Tile GetTile(float x, float z)
@@ -87,15 +110,24 @@ public class TileMap : MonoBehaviour
         int xIndex = (int)(x / 1f + 1f * 0.5f);
         int zIndex = (int)(z / 1f + 1f * 0.5f);
         return _tiles[xIndex, zIndex];
-        //Debug.Log(xIndex + ", " + zIndex);
-        //int index = zIndex + _map.SizeX * xIndex;
-        //return _allTiles[index];
     }
 
     public void RandomizeStartEnd()
     {
-        Debug.LogError("Not implemented");
-        //_tileSelector.StartTile = _emptyTiles[Random.Range(0, _emptyTiles.Count)];
+        if (_map != null)
+        {
+            _map.ReturnEmptyNode(StartTile?.Node);
+            _map.ReturnEmptyNode(EndTile?.Node);
+
+            MapNode startNode = _map.PopRandomEmptyNode();
+            MapNode endNode = _map.PopRandomEmptyNode();
+
+            if (startNode != null && endNode != null)
+            {
+                StartTile = _nodeToTile[startNode];
+                EndTile = _nodeToTile[endNode];
+            }
+        }
     }
 
     public void GenerateMap(bool useSettings = true)
@@ -116,7 +148,7 @@ public class TileMap : MonoBehaviour
     {
         ResetHighlights();
 
-        if (_tileSelector.StartTile != null && _tileSelector.EndTile != null)
+        if (StartTile != null && EndTile != null)
         {
             StopAllCoroutines();
             StartCoroutine(FindPathCoroutine());
@@ -125,8 +157,8 @@ public class TileMap : MonoBehaviour
 
     private IEnumerator FindPathCoroutine()
     {
-        MapNode start = _tileSelector.StartTile.Node;
-        MapNode end = _tileSelector.EndTile.Node;
+        MapNode start = StartTile.Node;
+        MapNode end = EndTile.Node;
 
         IPathfinder algo = PathfindersFactory.GetPathfinderForType(Settings.Pathfinder);
         yield return algo.FindPath(
@@ -134,14 +166,24 @@ public class TileMap : MonoBehaviour
             end,
             Settings.AnimateSearch, 
             (node) => 
-            { 
-                if(!node.HasObstacle)
-                    _nodeToTile[node].SetColor(Color.green);
+            {
+                if (!node.HasObstacle)
+                {
+                    Tile tile = _nodeToTile[node];
+                    tile.SetColor(Color.green);
+                    if (_tileDebugStyle == TileDebugStyle.Cost)
+                        tile.ShowCost();
+                }
             },
             (node) =>
             {
                 if (!node.HasObstacle)
-                    _nodeToTile[node].SetColor(Color.gray);
+                {
+                    Tile tile = _nodeToTile[node];
+                    tile.SetColor(Color.gray);
+                    if (_tileDebugStyle == TileDebugStyle.Cost)
+                        tile.ShowCost();
+                }
             }
         );
         
@@ -174,7 +216,9 @@ public class TileMap : MonoBehaviour
         else
         {
             //notify the player
-            Debug.Log("Could not find a path");
+            string message = "Could not find a path";
+            Debug.Log(message);
+            MessagePanel.ShowMessage(message);
         }
 
         yield return null;
@@ -184,7 +228,7 @@ public class TileMap : MonoBehaviour
     {
         for (int i = 0; i < _allTiles.Count; i++)
         {
-            if (_allTiles[i] == _tileSelector.StartTile || _allTiles[i] == _tileSelector.EndTile)
+            if (_allTiles[i] == StartTile || _allTiles[i] == EndTile)
                 continue;
 
             _allTiles[i].ResetColor();
@@ -195,7 +239,8 @@ public class TileMap : MonoBehaviour
     {
         //reset coroutines to make sure a path is not being search for when we re-generate a map
         StopAllCoroutines();
-        _tileSelector.Reset();
+        StartTile = null;
+        EndTile = null;
 
         for (int i = 0; i < _mapChunks.Count; i++)
         {
@@ -254,26 +299,54 @@ public class TileMap : MonoBehaviour
         }
     }
 
+    private void Awake()
+    {
+        _saveFilePath = Path.Combine(Application.persistentDataPath, "save.sav");
+    }
+
     private void Start()
     {
-        //GenerateMap();
-
-        _tileSelector.StartTileSelected += OnStartTileSelected;
-        _tileSelector.EndTileSelected += OnEndTileSelected;
+        Settings.SettingsChanged += OnSettingsChanged;
+        _isWeighted = Settings.IsWeighted;
     }
 
-    private void OnStartTileSelected(object sender, EventArgs e)
+    private void OnSettingsChanged(object sender, EventArgs e)
     {
-        //stop pathfinding
-        StopAllCoroutines();
-        ResetHighlights();
-    }
+        _numObstacles = Settings.NumObstacles;
+        _isWeighted = Settings.IsWeighted;
 
-    private void OnEndTileSelected(object sender, EventArgs e)
-    {
-        //stop pathfinding
-        StopAllCoroutines();
-        ResetHighlights();
+        if (_tileDebugStyle != Settings.TileDebugStyle)
+        {
+            _tileDebugStyle = Settings.TileDebugStyle;
+
+            switch (_tileDebugStyle)
+            {
+                default:
+                    for (int i = 0; i < _allTiles.Count; i++)
+                    {
+                        _allTiles[i].HideLabel();
+                    }
+                    break;
+                case TileDebugStyle.Coords:
+                    for (int i = 0; i < _allTiles.Count; i++)
+                    {
+                        _allTiles[i].ShowCoordinates();
+                    }
+                    break;
+                case TileDebugStyle.Weight:
+                    for (int i = 0; i < _allTiles.Count; i++)
+                    {
+                        _allTiles[i].ShowWeight();
+                    }
+                    break;
+                case TileDebugStyle.Cost:
+                    for (int i = 0; i < _allTiles.Count; i++)
+                    {
+                        _allTiles[i].ShowCost();
+                    }
+                    break;
+            }
+        }
     }
 
     private void OnDrawGizmos()
@@ -308,38 +381,5 @@ public class TileMap : MonoBehaviour
                 }
             }
         }
-
-        //if(_tileDebugStyle != _chosenDebugStyle)
-        //{
-            //_chosenDebugStyle = _tileDebugStyle;
-
-            switch (_tileDebugStyle)
-            {
-                default:
-                    for (int i = 0; i < _allTiles.Count; i++)
-                    {
-                        _allTiles[i].HideLabel();
-                    }
-                    break;
-                case TileDebugStyle.Coords:
-                    for (int i = 0; i < _allTiles.Count; i++)
-                    {
-                        _allTiles[i].ShowCoordinates();
-                    }
-                    break;
-                case TileDebugStyle.Weight:
-                    for (int i = 0; i < _allTiles.Count; i++)
-                    {
-                        _allTiles[i].ShowWeight();
-                    }
-                    break;
-                case TileDebugStyle.Cost:
-                    for (int i = 0; i < _allTiles.Count; i++)
-                    {
-                        _allTiles[i].ShowCost();
-                    }
-                    break;
-            }
-        //}
     }
 }

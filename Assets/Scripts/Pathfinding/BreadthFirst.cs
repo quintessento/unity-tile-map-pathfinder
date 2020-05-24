@@ -7,18 +7,18 @@ public class BreadthFirst : IPathfinder
 {
     public IEnumerator FindPath(MapNode start, MapNode end, bool animateSearch = false, Action<MapNode> processingAction = null, Action<MapNode> processedAction = null)
     {
-        Queue<MapNode> unprocessed = new Queue<MapNode>();
-        List<MapNode> processed = new List<MapNode>();
+        Queue<MapNode> unexplored = new Queue<MapNode>();
+        List<MapNode> explored = new List<MapNode>();
 
-        unprocessed.Enqueue(start);
-        processed.Add(start);
+        unexplored.Enqueue(start);
+        explored.Add(start);
 
         start.CameFrom = null;
 
-        while (unprocessed.Count > 0)
+        while (unexplored.Count > 0)
         {
-            MapNode current = unprocessed.Dequeue();
-
+            MapNode current = unexplored.Dequeue();
+            
             if (current == end)
             {
                 yield break;
@@ -29,17 +29,17 @@ public class BreadthFirst : IPathfinder
             {
                 MapNode neighbor = neighbors[i];
 
-                if (!processed.Contains(neighbor))
+                if (!explored.Contains(neighbor))
                 {
+                    unexplored.Enqueue(neighbor);
+                    explored.Add(neighbor);
+                    neighbor.CameFrom = current;
+
                     if (animateSearch && neighbor != start && neighbor != end)
                     {
                         processingAction?.Invoke(neighbor);
-                        yield return new WaitForSeconds(0.01f);
+                        yield return null;
                     }
-
-                    unprocessed.Enqueue(neighbor);
-                    processed.Add(neighbor);
-                    neighbor.CameFrom = current;
                 }
             }
 

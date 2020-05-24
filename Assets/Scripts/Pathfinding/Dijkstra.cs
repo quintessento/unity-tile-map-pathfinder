@@ -6,8 +6,14 @@ using UnityEngine;
 
 public class Dijkstra : IPathfinder
 {
+    private MapNode _start;
+    private MapNode _end;
+
     public IEnumerator FindPath(MapNode start, MapNode end, bool animateSearch = false, Action<MapNode> processingAction = null, Action<MapNode> processedAction = null)
     {
+        _start = start;
+        _end = end;
+
         PriorityQueue<MapNode> unexplored = new PriorityQueue<MapNode>();
         HashSet<MapNode> explored = new HashSet<MapNode>();
 
@@ -34,20 +40,19 @@ public class Dijkstra : IPathfinder
                     continue;
 
                 //distance from starting node
-                int gCost = neighbor.Weight * 10 + GetDistance(current, start);
-                int fCost = gCost;
+                int gCost = current.Cost + DistanceToNeighbor(neighbor);
 
-                if (fCost < neighbor.Cost || !unexplored.Contains(neighbor))
+                if (gCost < neighbor.Cost || !unexplored.Contains(neighbor))
                 {
+                    neighbor.Cost = gCost;
+                    neighbor.CameFrom = current;
+                    unexplored.Enqueue(neighbor, neighbor.Cost);
+
                     if (animateSearch && neighbor != start && neighbor != end)
                     {
                         processingAction?.Invoke(neighbor);
-                        yield return new WaitForSeconds(0.01f);
+                        yield return null;
                     }
-
-                    neighbor.Cost = fCost;
-                    neighbor.CameFrom = current;
-                    unexplored.Enqueue(neighbor, neighbor.Cost);
                 }
             }
 
@@ -60,10 +65,25 @@ public class Dijkstra : IPathfinder
         yield return null;
     }
 
-    private int GetDistance(MapNode a, MapNode b)
+    //private int DistanceToStart(MapNode node)
+    //{
+    //    return (int)(GetManhattanDistance(node, _start));
+    //}
+
+    private int DistanceToNeighbor(MapNode neighbor)
     {
-        float xDist = a.XIndex - b.XIndex;
-        float zDist = a.ZIndex - b.ZIndex;
-        return (int)(Mathf.Sqrt(xDist * xDist + zDist * zDist) * 10);
+        return neighbor.Weight;
     }
+
+    private float GetManhattanDistance(MapNode a, MapNode b)
+    {
+        return Mathf.Abs(a.XIndex - b.XIndex) + Mathf.Abs(a.ZIndex - b.ZIndex);
+    }
+
+    //private float GetEuclideanDistance(MapNode a, MapNode b)
+    //{
+    //    float xDist = a.XIndex - b.XIndex;
+    //    float zDist = a.ZIndex - b.ZIndex;
+    //    return Mathf.Sqrt(xDist * xDist + zDist * zDist);
+    //}
 }

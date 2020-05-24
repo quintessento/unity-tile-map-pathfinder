@@ -101,7 +101,7 @@ public class TilesChunk : MonoBehaviour
         _colors.Add(color);
         _colors.Add(color);
 
-        return new Tile(_meshFilter, i1, i2, i3, i4, i5, i6, color, label) { Node = node };
+        return new Tile(node, _meshFilter, i1, i2, i3, i4, i5, i6, color, label);
     }
 
     private void Awake()

@@ -25,8 +25,14 @@ public class CameraController : MonoBehaviour
     [Header("Settings")]
     [SerializeField]
     private float _movementSpeed = 10f;
+    [SerializeField]
+    private float _shiftMovementSpeed = 30f;
+    [SerializeField]
+    private float _lookSpeed = 5f;
 
     private Camera _camera;
+
+    private Vector3 _rotation;
 
     private void Awake()
     {
@@ -37,23 +43,37 @@ public class CameraController : MonoBehaviour
         Settings.SettingsChanged += OnSettingsChanged;
     }
 
+    private void Start()
+    {
+        _rotation = _camera.transform.eulerAngles;
+    }
+
     private void OnSettingsChanged(object sender, System.EventArgs e)
     {
-        _camera.orthographic = Settings.IsCameraOrthographic;
+        if (_camera.orthographic != Settings.IsCameraOrthographic)
+        {
+            _camera.orthographic = Settings.IsCameraOrthographic;
+
+            if (_camera.orthographic)
+            {
+                _camera.transform.eulerAngles = _rotation = Vector3.right * 90f;
+            }
+        }
     }
 
     private void Update()
     {
-        if (Input.GetMouseButton(1))
+        if (Input.GetMouseButton(1) && !_camera.orthographic)
         {
-            Ray ray = _camera.ScreenPointToRay(Input.mousePosition);
-            _camera.transform.forward = Vector3.MoveTowards(_camera.transform.forward, ray.direction, Time.deltaTime);
+            _rotation.y += Input.GetAxis("Mouse X");
+            _rotation.x += -Input.GetAxis("Mouse Y");
+            _camera.transform.eulerAngles = _rotation * _lookSpeed;
         }
 
         float cameraSpeed = _movementSpeed;
         if (Input.GetKey(KeyCode.LeftShift))
         {
-            cameraSpeed *= 10;
+            cameraSpeed = _shiftMovementSpeed;
         }
 
         if(Input.GetKey(_forwardKey) || Input.GetKey(_forwardKeyAlt))
@@ -77,6 +97,7 @@ public class CameraController : MonoBehaviour
         if (_camera.orthographic)
         {
             _camera.orthographicSize -= Input.GetAxis("Mouse ScrollWheel") * 10f;
+            _camera.orthographicSize = Mathf.Max(1f, _camera.orthographicSize);
         }
     }
 }

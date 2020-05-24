@@ -6,8 +6,14 @@ using UnityEngine;
 
 public class AStar : IPathfinder
 {
+    private MapNode _start;
+    private MapNode _end;
+
     public IEnumerator FindPath(MapNode start, MapNode end, bool animateSearch = false, Action<MapNode> processingAction = null, Action<MapNode> processedAction = null)
     {
+        _start = start;
+        _end = end;
+
         PriorityQueue<MapNode> unexplored = new PriorityQueue<MapNode>();
         HashSet<MapNode> explored = new HashSet<MapNode>();
 
@@ -34,22 +40,22 @@ public class AStar : IPathfinder
                     continue;
 
                 //distance from starting node
-                int gCost = neighbor.Weight * 5 + GetHeuristicEuclidean(current, start);
+                int gCost = current.Cost + DistanceToNeighbor(neighbor);
                 //heuristic (distance to the end node)
-                int hCost = GetHeuristicEuclidean(current, end);
+                int hCost = DistanceToEnd(neighbor);
                 int fCost = gCost + hCost;
 
-                if (fCost < neighbor.Cost || !unexplored.Contains(neighbor))
+                if (gCost < neighbor.Cost || !unexplored.Contains(neighbor))
                 {
+                    neighbor.Cost = gCost;
+                    neighbor.CameFrom = current;
+                    unexplored.Enqueue(neighbor, fCost);
+
                     if (animateSearch && neighbor != start && neighbor != end)
                     {
                         processingAction?.Invoke(neighbor);
-                        yield return new WaitForSeconds(0.01f);
+                        yield return null;
                     }
-
-                    neighbor.Cost = fCost;
-                    neighbor.CameFrom = current;
-                    unexplored.Enqueue(neighbor, neighbor.Cost);
                 }
             }
 
@@ -62,15 +68,40 @@ public class AStar : IPathfinder
         yield return null;
     }
 
-    private int GetHeuristicManhattan(MapNode a, MapNode b)
+    //private int DistanceToStart(MapNode node)
+    //{
+    //    return (int)GetManhattanDistance(node, _start);
+    //}
+
+    private int DistanceToEnd(MapNode node)
+    {
+        return (int)(GetManhattanDistance(node, _end));
+    }
+
+    private int DistanceToNeighbor(MapNode neighbor)
+    {
+        return neighbor.Weight;
+    }
+
+    //private int GetWeightedDistance(MapNode a, MapNode b)
+    //{
+    //    return (int)(GetManhattanDistance(a, b));
+    //}
+
+    //private int GetHeuristic(MapNode a, MapNode b)
+    //{
+    //    return (int)(GetManhattanDistance(a, b));
+    //}
+
+    private float GetManhattanDistance(MapNode a, MapNode b)
     {
         return Mathf.Abs(a.XIndex - b.XIndex) + Mathf.Abs(a.ZIndex - b.ZIndex);
     }
 
-    private int GetHeuristicEuclidean(MapNode a, MapNode b)
+    private float GetEuclideanDistance(MapNode a, MapNode b)
     {
         float xDist = a.XIndex - b.XIndex;
         float zDist = a.ZIndex - b.ZIndex;
-        return (int)(Mathf.Sqrt(xDist * xDist + zDist * zDist) * 10);
+        return Mathf.Sqrt(xDist * xDist + zDist * zDist);
     }
 }

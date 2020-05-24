@@ -3,7 +3,7 @@ using UnityEngine.UI;
 
 public class Tile
 {
-    public MapNode Node { get; set; }
+    public MapNode Node { get; private set; }
 
     private Color _originalColor;
 
@@ -12,8 +12,9 @@ public class Tile
 
     private Text _label = null;
 
-    public Tile(MeshFilter meshFilter, int i1, int i2, int i3, int i4, int i5, int i6, Color color, Text label)
+    public Tile(MapNode node, MeshFilter meshFilter, int i1, int i2, int i3, int i4, int i5, int i6, Color color, Text label)
     {
+        Node = node;
         _meshFilter = meshFilter;
         _i1 = i1;
         _i2 = i2;
@@ -23,6 +24,22 @@ public class Tile
         _i6 = i6;
         _originalColor = color;
         _label = label;
+
+        switch (Settings.TileDebugStyle)
+        {
+            default:
+                HideLabel();
+                break;
+            case TileDebugStyle.Coords:
+                ShowCoordinates();
+                break;
+            case TileDebugStyle.Weight:
+                ShowWeight();
+                break;
+            case TileDebugStyle.Cost:
+                ShowCost();
+                break;
+        }
     }
 
     public void SetColor(Color color)
@@ -59,7 +76,7 @@ public class Tile
     {
         _label.gameObject.SetActive(true);
         _label.text = Node.Cost.ToString();
-        _label.resizeTextMaxSize = _label.fontSize = 60;
+        _label.resizeTextMaxSize = _label.fontSize = 40;
     }
 
     public void HideLabel()

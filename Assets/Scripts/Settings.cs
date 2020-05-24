@@ -5,6 +5,8 @@ public class Settings
 {
     public static int MapSize { get; private set; }
     public static int NumObstacles { get; private set; }
+    public static bool IsWeighted { get; private set; }
+    public static TileDebugStyle TileDebugStyle { get; private set; }
 
     public static Type Pathfinder { get; private set; }
 
@@ -29,6 +31,26 @@ public class Settings
         NumObstacles = numObstacles;
 
         PlayerPrefs.SetInt(key_numObstacles, numObstacles);
+
+        if (notifyChange)
+        {
+            SettingsChanged?.Invoke(null, null);
+        }
+    }
+
+    public static void SetIsWeighted(bool isWeighted, bool notifyChange)
+    {
+        IsWeighted = isWeighted;
+
+        if (notifyChange)
+        {
+            SettingsChanged?.Invoke(null, null);
+        }
+    }
+
+    public static void SetTileDebugStyle(TileDebugStyle style, bool notifyChange)
+    {
+        TileDebugStyle = style;
 
         if (notifyChange)
         {

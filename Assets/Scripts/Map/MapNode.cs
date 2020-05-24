@@ -38,11 +38,18 @@ public class MapNode
 
 	public void AddNeighbor(MapNode neighbor)
     {
-		if(neighbor == null)
+		if (neighbor == null)
         {
 			UnityEngine.Debug.LogError("Trying to add a null neighbor.");
 			return;
         }
+
+		if (neighbor.HasObstacle || this.HasObstacle)
+		{
+			//skip nodes with obstacles, as they are not valid neighbors
+			//this case arrises when loading the map from a save file
+			return;
+		}
 
 		if (!ConnectedNeighbors.Contains(neighbor))
 		{
