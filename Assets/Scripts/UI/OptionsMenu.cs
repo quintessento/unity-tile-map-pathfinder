@@ -6,6 +6,9 @@ using UnityEngine.UI;
 public class OptionsMenu : MonoBehaviour
 {
     [SerializeField]
+    private SaveLoadMenu _saveLoadMenu = null;
+
+    [SerializeField]
     private InputField _mapSizeInputField = null;
     [SerializeField]
     private InputField _numObstaclesInputField = null;
@@ -28,6 +31,16 @@ public class OptionsMenu : MonoBehaviour
     public void UpdateFieldsWhenGenerateClicked()
     {
         SetInputFieldValueUnnotified(_mapSizeInputField, Settings.MapSize.ToString());
+    }
+
+    public void OpenSaveLoadMenu()
+    {
+        _saveLoadMenu.gameObject.SetActive(true);
+    }
+
+    public void Quit()
+    {
+        Application.Quit();
     }
 
     private void Awake()
@@ -71,6 +84,11 @@ public class OptionsMenu : MonoBehaviour
         _cameraOrthographicToggle.isOn = Settings.IsCameraOrthographic;
         _cameraOrthographicToggle.onValueChanged.RemoveAllListeners();
         _cameraOrthographicToggle.onValueChanged.AddListener(OnCameraOrthographicValueChanged);
+    }
+
+    private void OnApplicationQuit()
+    {
+        Settings.SettingsChanged -= OnSettingsChanged;
     }
 
     private void FillTileDebugStyleDropdown()

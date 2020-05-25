@@ -1,11 +1,14 @@
 ﻿using System;
-using System.Collections;
 using System.Collections.Generic;
-using System.IO;
 using UnityEngine;
 
-public class TileMap : MonoBehaviour
+/// <summary>
+/// Main entry point to the app. Generates the tile map and initiates pathfinding on the map.
+/// </summary>
+public partial class TileMap : MonoBehaviour
 {
+    private const int _tilesPerChunkX = 10, _tilesPerChunkZ = 10;
+
     [Header("Prefabs")]
     [SerializeField]
     private MapChunk _mapChunkPrefab = null;
@@ -24,22 +27,22 @@ public class TileMap : MonoBehaviour
     [SerializeField]
     private TileDebugStyle _tileDebugStyle = TileDebugStyle.None;
 
-    private int _tilesPerChunkX = 10, _tilesPerChunkZ = 10;
     private int _numChunksX, _numChunksZ;
 
+    //general-purpose 2D array of tiles
     private Tile[,] _tiles;
-    private List<Tile> _allTiles = new List<Tile>();
+    //one-dimensional list of tiles for ease of use, where applicable
+    private readonly List<Tile> _allTiles = new List<Tile>();
 
-    private ListPool<MapChunk> _chunksPool = new ListPool<MapChunk>();
-    private List<MapChunk> _mapChunks = new List<MapChunk>();
+    private readonly ListPool<MapChunk> _chunksPool = new ListPool<MapChunk>();
+    private readonly List<MapChunk> _mapChunks = new List<MapChunk>();
 
     private Tile _startTile, _endTile;
 
-    private Dictionary<MapNode, Tile> _nodeToTile = new Dictionary<MapNode, Tile>();
+    //mapping of model to view for reverse access
+    private readonly Dictionary<MapNode, Tile> _nodeToTile = new Dictionary<MapNode, Tile>();
 
-    private Map _map;
-
-    private string _saveFilePath;
+    public Map Map { get; private set; }
 
     public Tile StartTile
     {
@@ -75,153 +78,30 @@ public class TileMap : MonoBehaviour
         }
     }
 
-    public void Save()
+    public void Load(Map map)
     {
-        if (_map != null)
-        {
-            using (BinaryWriter writer = new BinaryWriter(File.Open(_saveFilePath, FileMode.Create)))
-            {
-                writer.Write(Settings.NumObstacles);
-                _map.Save(writer);
-                MessagePanel.ShowMessage("Saved map to " + _saveFilePath);
-            }
-        }
+        Map = map;
+
+        ClearMap();
+
+        _sizeX = Map.SizeX;
+        _sizeZ = Map.SizeZ;
+        _numObstacles = Settings.NumObstacles;
+
+        GenerateTileMap(Map);
     }
 
-    public void Load()
-    {
-        using (BinaryReader reader = new BinaryReader(File.Open(_saveFilePath, FileMode.Open))) 
-        {
-            _numObstacles = reader.ReadInt32();
-            _map = new Map(reader);
-
-            ClearMap();
-
-            _sizeX = _map.SizeX;
-            _sizeZ = _map.SizeZ;
-            _numObstacles = Settings.NumObstacles;
-
-            GenerateTileMap(_map);
-        }
-    }
-
+    /// <summary>
+    /// Gets a tile from the tile map using a world x and z position.
+    /// </summary>
+    /// <param name="x">X coordinate.</param>
+    /// <param name="z">Z coordinate.</param>
+    /// <returns>Tile if found.</returns>
     public Tile GetTile(float x, float z)
     {
         int xIndex = (int)(x / 1f + 1f * 0.5f);
         int zIndex = (int)(z / 1f + 1f * 0.5f);
         return _tiles[xIndex, zIndex];
-    }
-
-    public void RandomizeStartEnd()
-    {
-        if (_map != null)
-        {
-            _map.ReturnEmptyNode(StartTile?.Node);
-            _map.ReturnEmptyNode(EndTile?.Node);
-
-            MapNode startNode = _map.PopRandomEmptyNode();
-            MapNode endNode = _map.PopRandomEmptyNode();
-
-            if (startNode != null && endNode != null)
-            {
-                StartTile = _nodeToTile[startNode];
-                EndTile = _nodeToTile[endNode];
-            }
-        }
-    }
-
-    public void GenerateMap(bool useSettings = true)
-    {
-        ClearMap();
-
-        if (useSettings)
-        {
-            _sizeX = _sizeZ = Settings.MapSize;
-            _numObstacles = Settings.NumObstacles;
-        }
-
-        _map = new Map(_sizeX, _sizeZ, _numObstacles, _isWeighted);
-        GenerateTileMap(_map);
-    }
-
-    public void FindPath()
-    {
-        ResetHighlights();
-
-        if (StartTile != null && EndTile != null)
-        {
-            StopAllCoroutines();
-            StartCoroutine(FindPathCoroutine());
-        }
-    }
-
-    private IEnumerator FindPathCoroutine()
-    {
-        MapNode start = StartTile.Node;
-        MapNode end = EndTile.Node;
-
-        IPathfinder algo = PathfindersFactory.GetPathfinderForType(Settings.Pathfinder);
-        yield return algo.FindPath(
-            start, 
-            end,
-            Settings.AnimateSearch, 
-            (node) => 
-            {
-                if (!node.HasObstacle)
-                {
-                    Tile tile = _nodeToTile[node];
-                    tile.SetColor(Color.green);
-                    if (_tileDebugStyle == TileDebugStyle.Cost)
-                        tile.ShowCost();
-                }
-            },
-            (node) =>
-            {
-                if (!node.HasObstacle)
-                {
-                    Tile tile = _nodeToTile[node];
-                    tile.SetColor(Color.gray);
-                    if (_tileDebugStyle == TileDebugStyle.Cost)
-                        tile.ShowCost();
-                }
-            }
-        );
-        
-        List<MapNode> path = new List<MapNode>();
-
-        MapNode current = end.CameFrom;
-        while(current != null)
-        {
-            if (current.CameFrom == null && current != start)
-            {
-                path = null;
-                break;
-            }
-            if(current != start)
-                path.Add(current);
-            current = current.CameFrom;
-        }
-
-        if (path != null && path.Count > 0)
-        {
-            for (int i = path.Count - 1; i >= 0; i--)
-            {
-                if (!path[i].HasObstacle)
-                {
-                    _nodeToTile[path[i]].SetColor(Color.white);
-                    yield return new WaitForSeconds(0.05f);
-                }
-            }
-        }
-        else
-        {
-            //notify the player
-            string message = "Could not find a path";
-            Debug.Log(message);
-            MessagePanel.ShowMessage(message);
-        }
-
-        yield return null;
     }
 
     private void ResetHighlights()
@@ -252,62 +132,15 @@ public class TileMap : MonoBehaviour
         _nodeToTile.Clear();
     }
 
-    private void GenerateTileMap(Map map)
-    {
-        _tiles = new Tile[_sizeX, _sizeZ];
-
-        _numChunksX = Mathf.CeilToInt(map.SizeX / (float)_tilesPerChunkX);
-        _numChunksZ = Mathf.CeilToInt(map.SizeZ / (float)_tilesPerChunkZ);
-
-        CreateMapChunks();
-    }
-
-    private void CreateMapChunks()
-    {
-        int prevChunkX = 0, prevChunkZ = 0;
-        for (int x = 0; x < _numChunksX; x++)
-        {
-            for (int z = 0; z < _numChunksZ; z++)
-            {
-                MapChunk chunk = _chunksPool.Get();
-                if (chunk == null)
-                {
-                    chunk = Instantiate(_mapChunkPrefab);
-                }
-                chunk.transform.SetParent(transform);
-
-                int numTilesXInChunk = Mathf.Min(_map.SizeX, _tilesPerChunkX);
-                int undividedTilesX = (x + 1) * _tilesPerChunkX;
-                if (undividedTilesX > _map.SizeX)
-                    numTilesXInChunk = _map.SizeX % _tilesPerChunkX;
-
-                int numTilesZInChunk = Mathf.Min(_map.SizeZ, _tilesPerChunkZ);
-                int undividedTilesZ = (z + 1) * _tilesPerChunkZ;
-                if (undividedTilesZ > _map.SizeZ)
-                    numTilesZInChunk = _map.SizeZ % _tilesPerChunkZ;
-
-                chunk.GenerateMapChunk(numTilesXInChunk, numTilesZInChunk, x, z, prevChunkX, prevChunkZ, _map, _allTiles, _tiles, _nodeToTile);
-
-                _mapChunks.Add(chunk);
-
-                if (x == z)
-                {
-                    prevChunkX = numTilesXInChunk;
-                    prevChunkZ = numTilesZInChunk;
-                }
-            }
-        }
-    }
-
-    private void Awake()
-    {
-        _saveFilePath = Path.Combine(Application.persistentDataPath, "save.sav");
-    }
-
     private void Start()
     {
         Settings.SettingsChanged += OnSettingsChanged;
         _isWeighted = Settings.IsWeighted;
+    }
+
+    private void OnApplicationQuit()
+    {
+        Settings.SettingsChanged -= OnSettingsChanged;
     }
 
     private void OnSettingsChanged(object sender, EventArgs e)
@@ -319,6 +152,7 @@ public class TileMap : MonoBehaviour
         {
             _tileDebugStyle = Settings.TileDebugStyle;
 
+            //enable/disable labels for all tiles
             switch (_tileDebugStyle)
             {
                 default:
@@ -351,6 +185,7 @@ public class TileMap : MonoBehaviour
 
     private void OnDrawGizmos()
     {
+        //drawing of debug connections (edges) between neighboring tiles
         if (_drawDebug)
         {
             if (_tiles != null)

@@ -51,7 +51,7 @@ public class Map
 
         for (int i = 0; i < numObstacles; i++)
         {
-            PlaceObstacles();
+            PlaceObstacle();
         }
     }
 
@@ -166,7 +166,7 @@ public class Map
         }
     }
 
-    private void PlaceObstacles()
+    private void PlaceObstacle()
     {
         int[,] obstacleBlueprint = Obstacles.RandomDeclared;
 
@@ -217,12 +217,12 @@ public class Map
         if (possiblePlacements.Count > 0)
         {
             List<Tuple<int, int>> placement = possiblePlacements[Random.Range(0, possiblePlacements.Count)];
-            PlaceObstacle(placement);
+            PlaceObstaclesAtCoordinates(placement);
         }
     }
 
     //places obstacles at nodes with provided coordinates
-    private void PlaceObstacle(List<Tuple<int, int>> coords)
+    private void PlaceObstaclesAtCoordinates(List<Tuple<int, int>> coords)
     {
         for (int i = 0; i < coords.Count; i++)
         {
